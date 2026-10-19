@@ -3,7 +3,9 @@ import { combine, fullInertia, hullOf, meshProps, primProps, type Props } from '
 import type { MeshData, Part, RobotDef, Vec3 } from './types';
 
 export const ARENA = 7.3;           // m, featherweight box (same as the desktop sim)
+export const WALL_H = 2.4;          // m: enclosed like a real arena (robots used to get flung over 0.6 m walls)
 export const TIMESTEP = 0.0002;
+export const INTEGRATOR = 'implicit';      // implicitfast blew up shell spinners (it treats the gyroscopic terms explicitly)
 export const V_CELL = 3.7;
 
 export const motorSpeed = (kv: number, v: number) => kv * v * 2 * Math.PI / 60;   // rad/s no load
@@ -82,6 +84,8 @@ export interface Derived {
   topSpeed: number;                   // no-load drive speed, m/s
   noLoadTip: number;                  // spinners: no-load tip speed, m/s
   noLoadArmDps: number;               // arms: no-load speed, deg/s
+  weaponDrag: number;                 // spinners: air drag torque = weaponDrag * omega^2
+  sizeScale: number;                  // bearing friction relative to a featherweight (small robots have tiny bearings)
   mass: number;
   massBy: Record<string, number>;
   minZ: number;                       // lowest colliding point (robot frame)
@@ -93,7 +97,8 @@ export function derive(def: RobotDef): Derived {
   const origin: Record<string, Vec3> = { chassis: [0, 0, 0], weapon: def.weapon.pivot };
   def.wheels.forEach((w, i) => (origin['wheel' + i] = w.center));
   const bodies = Object.keys(origin);
-  const wheelSide = def.wheels.map((w) => (w.center[0] < 0 ? 'l' : 'r') as 'l' | 'r');
+  const midX = def.wheels.reduce((s, w) => s + w.center[0], 0) / Math.max(1, def.wheels.length);
+  const wheelSide = def.wheels.map((w) => (w.center[0] < midX ? 'l' : 'r') as 'l' | 'r');
   const ms = motorSpeed(def.elec.drive.kv, vBatt);
   // the reduction applies to the biggest wheel; other wheels on a side are coupled at the same surface speed
   const maxR = Math.max(0.01, ...def.wheels.map((w) => w.radius));
@@ -122,6 +127,8 @@ export function derive(def: RobotDef): Derived {
   const weaponRatio = def.elec.weapon.ratio ?? (spin
     ? wms / ((def.elec.weapon.tipSpeed ?? 80) / Math.max(tipRadius, 0.01))
     : wms / ((def.elec.weapon.armDps ?? 600) * Math.PI / 180));
+  // air drag grows ~ r^5; 2.5e-6 was tuned on a 157 mm featherweight bar (a fixed value stalls small weapons)
+  const weaponDrag = spin ? 2.5e-6 * (Math.max(tipRadius, 0.005) / 0.157) ** 5 : 0;
   const noLoadTip = (wms / weaponRatio) * tipRadius, noLoadArmDps = (wms / weaponRatio) * 180 / Math.PI;
 
   const massBy: Record<string, number> = {};
@@ -132,7 +139,7 @@ export function derive(def: RobotDef): Derived {
   for (const p of def.parts) if (p.collide && !p.body.startsWith('wheel')) for (const q of partPoints(p)) minZ = Math.min(minZ, q[2]);
   for (const w of def.wheels) minZ = Math.min(minZ, w.center[2] - w.radius);
   if (!isFinite(minZ)) minZ = 0;
-  return { bodies, origin, wheelSide, driveRatio, driven, weaponRatio, tipRadius, weaponJ, topSpeed, noLoadTip, noLoadArmDps, mass, massBy, minZ, vBatt };
+  return { bodies, origin, wheelSide, driveRatio, driven, weaponRatio, tipRadius, weaponJ, topSpeed, noLoadTip, noLoadArmDps, weaponDrag, sizeScale: Math.min(1, (mass / 13.6) ** (5 / 3)), mass, massBy, minZ, vBatt };
 }
 
 function quatZ(deg: number): string {
@@ -152,16 +159,17 @@ export function robotXml(def: RobotDef, D: Derived, prefix: string, xy: [number,
     let g: string;
     if (p.mesh) {
       const h = partHull(p).pos, vs: string[] = [];
+      if (h.length < 12) return;                                 // flat / empty part: mass only
       for (let k = 0; k < h.length; k += 3) vs.push(v3([h[k] - o[0], h[k + 1] - o[1], h[k + 2] - o[2]]));
       assets.push(`<mesh name="${prefix}m${i}" vertex="${vs.join('  ')}" maxhullvert="64"/>`);
-      g = `<geom type="mesh" mesh="${prefix}m${i}" ${fr}/>`;
+      g = `<geom name="${prefix}part${i}" type="mesh" mesh="${prefix}m${i}" ${fr}/>`;
     } else {
       const q = p.prim!;
-      if (q.type === 'box') g = `<geom type="box" pos="${v3(sub(q.pos, o))}" size="${v3(q.size!)}" ${fr}/>`;
-      else if (q.type === 'sphere') g = `<geom type="sphere" pos="${v3(sub(q.pos, o))}" size="${f5(q.radius!)}" ${fr}/>`;
+      if (q.type === 'box') g = `<geom name="${prefix}part${i}" type="box" pos="${v3(sub(q.pos, o))}" size="${v3(q.size!)}" ${fr}/>`;
+      else if (q.type === 'sphere') g = `<geom name="${prefix}part${i}" type="sphere" pos="${v3(sub(q.pos, o))}" size="${f5(q.radius!)}" ${fr}/>`;
       else {
         const f = q.fromto!;
-        g = `<geom type="cylinder" fromto="${v3(sub([f[0], f[1], f[2]], o))} ${v3(sub([f[3], f[4], f[5]], o))}" size="${f5(q.radius!)}" ${fr}/>`;
+        g = `<geom name="${prefix}part${i}" type="cylinder" fromto="${v3(sub([f[0], f[1], f[2]], o))} ${v3(sub([f[3], f[4], f[5]], o))}" size="${f5(q.radius!)}" ${fr}/>`;
       }
     }
     (geoms[p.body] ??= []).push(g);
@@ -181,7 +189,7 @@ export function robotXml(def: RobotDef, D: Derived, prefix: string, xy: [number,
     const arm = E.drive.rotorJ * D.driveRatio[i] ** 2 * n;
     return `
       <body name="${prefix}${k}" pos="${v3(w.center)}">
-        <joint name="${prefix}${k}" type="hinge" axis="${v3(w.axis)}" damping="0.004" armature="${arm.toFixed(7)}"/>
+        <joint name="${prefix}${k}" type="hinge" axis="${v3(w.axis)}" damping="${(0.004 * D.sizeScale).toPrecision(3)}" armature="${arm.toFixed(7)}"/>
         ${inertial(k, 0.1)}
         <geom name="${prefix}${k}_tread" type="cylinder" fromto="${v3(scale(half, -1))} ${v3(half)}" size="${f5(w.radius)}"
               condim="4" friction="${def.tyreMu} 0.01 0.0002" solref="0.02 1" solimp="0.9 0.95 0.001"/>
@@ -191,8 +199,8 @@ export function robotXml(def: RobotDef, D: Derived, prefix: string, xy: [number,
   const W = def.weapon;
   const wArm = E.weapon.rotorJ * D.weaponRatio ** 2;
   const joint = W.type === 'spinner' || W.type === 'drum'
-    ? `<joint name="${prefix}weapon" type="hinge" axis="${v3(norm(W.axis))}" damping="0.0003" armature="${wArm.toFixed(7)}"/>`
-    : `<joint name="${prefix}weapon" type="hinge" axis="${v3(norm(W.axis))}" limited="true" damping="0.0003"
+    ? `<joint name="${prefix}weapon" type="hinge" axis="${v3(norm(W.axis))}" damping="${(0.0003 * D.sizeScale).toPrecision(3)}" armature="${wArm.toFixed(7)}"/>`
+    : `<joint name="${prefix}weapon" type="hinge" axis="${v3(norm(W.axis))}" limited="true" damping="${(0.0003 * D.sizeScale).toPrecision(3)}"
               range="${(W.rangeDeg![0] * Math.PI / 180).toFixed(4)} ${(W.rangeDeg![1] * Math.PI / 180).toFixed(4)}"
               armature="${wArm.toFixed(7)}" solreflimit="0.004 1"/>`;
   const spawnZ = -D.minZ + 0.004;
@@ -233,7 +241,7 @@ export function worldXml(entries: Entry[], dummy: boolean, timestep = TIMESTEP):
     : '';
   return `<mujoco model="botsim">
   <compiler angle="radian" inertiafromgeom="auto"/>
-  <option timestep="${timestep}" integrator="implicitfast" gravity="0 0 -9.81" cone="elliptic" impratio="1">
+  <option timestep="${timestep}" integrator="${(globalThis as { BOTSIM_INTEGRATOR?: string }).BOTSIM_INTEGRATOR ?? INTEGRATOR}" gravity="0 0 -9.81" cone="elliptic" impratio="1">
     <flag multiccd="enable"/>
   </option>
   <size memory="200M"/>
@@ -245,10 +253,11 @@ export function worldXml(entries: Entry[], dummy: boolean, timestep = TIMESTEP):
   </default>
   <worldbody>
     <geom name="floor" type="plane" size="${h} ${h} 0.1" friction="0.3 0.005 0.0001"/>
-    <geom name="wall_n" type="box" pos="0 ${h} 0.3" size="${h} 0.05 0.3"/>
-    <geom name="wall_s" type="box" pos="0 ${-h} 0.3" size="${h} 0.05 0.3"/>
-    <geom name="wall_e" type="box" pos="${h} 0 0.3" size="0.05 ${h} 0.3"/>
-    <geom name="wall_w" type="box" pos="${-h} 0 0.3" size="0.05 ${h} 0.3"/>
+    <geom name="wall_n" type="box" pos="0 ${h} ${WALL_H / 2}" size="${h} 0.05 ${WALL_H / 2}"/>
+    <geom name="wall_s" type="box" pos="0 ${-h} ${WALL_H / 2}" size="${h} 0.05 ${WALL_H / 2}"/>
+    <geom name="wall_e" type="box" pos="${h} 0 ${WALL_H / 2}" size="0.05 ${h} ${WALL_H / 2}"/>
+    <geom name="wall_w" type="box" pos="${-h} 0 ${WALL_H / 2}" size="0.05 ${h} ${WALL_H / 2}"/>
+    <geom name="roof" type="box" pos="0 0 ${WALL_H + 0.05}" size="${h} ${h} 0.05"/>
     ${parts.map((p) => p.body).join('\n')}
     ${dum}
   </worldbody>

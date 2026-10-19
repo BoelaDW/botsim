@@ -50,10 +50,15 @@ export function meshVolumeProps(pos: ArrayLike<number>, idx: ArrayLike<number>):
 }
 
 /** Convex hull of a point set: vertices + triangles. */
+/** Convex hull as a triangle mesh. Flat, line-like or empty input (sheet-metal surfaces, sketches)
+ *  has no solid hull: that returns an empty mesh, and such parts get mass but no collision shape. */
 export function hullOf(pos: ArrayLike<number>): MeshData {
+  const empty = { pos: new Float32Array(0), idx: new Uint32Array(0) };
   const pts: Vector3[] = [];
   for (let i = 0; i < pos.length; i += 3) pts.push(new Vector3(pos[i], pos[i + 1], pos[i + 2]));
-  const hull = new ConvexHull().setFromPoints(pts);
+  if (pts.length < 4) return empty;
+  let hull: ConvexHull;
+  try { hull = new ConvexHull().setFromPoints(pts); } catch { return empty; }
   const vmap = new Map<Vector3, number>();
   const vs: number[] = [], ix: number[] = [];
   const id = (p: Vector3) => {
@@ -67,7 +72,11 @@ export function hullOf(pos: ArrayLike<number>): MeshData {
     do { ring.push(id(e.head().point)); e = e.next; } while (e !== f.edge);
     for (let i = 1; i + 1 < ring.length; i++) ix.push(ring[0], ring[i], ring[i + 1]);
   }
-  return { pos: new Float32Array(vs), idx: new Uint32Array(ix) };
+  const out = { pos: new Float32Array(vs), idx: new Uint32Array(ix) };
+  // thinner than ~0.01 mm everywhere: treat as flat
+  const ext = [0, 1, 2].map((k) => { let lo = Infinity, hi = -Infinity; for (let i = k; i < vs.length; i += 3) { lo = Math.min(lo, vs[i]); hi = Math.max(hi, vs[i]); } return hi - lo; });
+  if (vs.length < 12 || !(meshVolumeProps(out.pos, out.idx).vol > 1e-5 * Math.max(...ext) ** 2)) return empty;
+  return out;
 }
 
 /** Mass properties of a mesh part with a known mass. Falls back to the convex hull when the
@@ -78,7 +87,12 @@ export function meshProps(mesh: MeshData, mass: number, hull?: MeshData): Props 
   const hm = hull ?? hullOf(mesh.pos);
   const h = meshVolumeProps(hm.pos, hm.idx);
   if (!(v.vol > 0.005 * h.vol && v.vol < 1.02 * h.vol)) { v = h; usedHull = true; }
-  const k = v.vol > 0 ? mass / v.vol : 0;
+  if (!(v.vol > 0) || !v.c.every(Number.isFinite)) {          // flat or empty: a point mass at its vertices' centre
+    const c: Vec3 = [0, 0, 0], n = mesh.pos.length / 3;
+    for (let i = 0; i < mesh.pos.length; i += 3) for (let k = 0; k < 3; k++) c[k] += mesh.pos[i + k] / n;
+    return { m: n ? mass : 0, c, I: [0, 0, 0, 0, 0, 0, 0, 0, 0], vol: 0, usedHull: true };
+  }
+  const k = mass / v.vol;
   return { m: mass, c: v.c, I: v.I.map((x) => x * k), vol: v.vol, usedHull };
 }
 

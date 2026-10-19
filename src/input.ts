@@ -7,14 +7,16 @@ export interface View { qpos: Float64Array; qvel: Float64Array; xpos: Float64Arr
 
 const keys = new Set<string>();
 const pressedOnce = new Set<string>();
-addEventListener('keydown', (e) => {
-  if ((e.target as HTMLElement)?.closest?.('input, select, textarea')) return;
-  if (!keys.has(e.code)) pressedOnce.add(e.code);
-  keys.add(e.code);
-  if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
-});
-addEventListener('keyup', (e) => keys.delete(e.code));
-addEventListener('blur', () => keys.clear());
+if (typeof window !== 'undefined') {           // (headless tests import the AI without a DOM)
+  addEventListener('keydown', (e) => {
+    if ((e.target as HTMLElement)?.closest?.('input, select, textarea')) return;
+    if (!keys.has(e.code)) pressedOnce.add(e.code);
+    keys.add(e.code);
+    if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
+  });
+  addEventListener('keyup', (e) => keys.delete(e.code));
+  addEventListener('blur', () => keys.clear());
+}
 
 /** True once per key press (edge). */
 export function takePress(code: string): boolean {

@@ -1,7 +1,7 @@
 // Three.js view of the arena: robot bodies follow MuJoCo's body poses each frame.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ARENA } from './build';
+import { ARENA, WALL_H } from './build';
 import type { Sim } from './sim';
 import type { Part, RobotDef } from './types';
 
@@ -81,6 +81,11 @@ export class ArenaView {
       w.position.set(x, y, 0.3);
       this.scene.add(w);
     }
+    // the polycarbonate enclosure above the kick plates: just its edges, so the camera can see in
+    const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(ARENA, ARENA, WALL_H)),
+      new THREE.LineBasicMaterial({ color: 0x9aa0ad, transparent: true, opacity: 0.35 }));
+    box.position.z = WALL_H / 2;
+    this.scene.add(box);
     this.scene.add(this.robotRoot);
     new ResizeObserver(() => this.resize()).observe(canvas);
     this.resize();
@@ -96,7 +101,7 @@ export class ArenaView {
 
   /** Remove all robot meshes. */
   clear() {
-    for (const g of this.groups) g.group.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
+    for (const g of this.groups) g.group.traverse((o) => { if (o instanceof THREE.Mesh) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } });
     this.robotRoot.clear();
     this.groups = [];
   }

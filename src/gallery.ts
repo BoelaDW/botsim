@@ -3,13 +3,13 @@ import { busy, done } from './busy';
 import { BRANCH, REPO, ROBOT_DIR } from './config';
 import { loadBot } from './robotfile';
 import type { RobotDef } from './types';
+import { esc } from './util';
 
 export interface GalleryEntry {
   file: string; name: string; author: string; description: string; weapon: string;
   mass: number; volts: number; parts: number; bytes: number; added: string | null;
 }
 
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 export const isGalleryFile = (f: string) => /^[\w.-]+\.bot$/i.test(f);
 export const shareLink = (file: string) => `${location.origin}${location.pathname}?bot=${encodeURIComponent(file)}`;
 

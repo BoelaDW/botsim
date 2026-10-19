@@ -108,6 +108,7 @@
             <option value="0.001">mm</option><option value="0.0254">inch</option><option value="1">m</option></select></label>
         </div>
         <div id="ws-status" class="hint"></div>
+        <p class="hint">Changed the CAD? Export it again under the same file name and load it: tags, materials and settings carry over by part name.</p>
 
         <h3>2. Orientation</h3>
         <p class="hint">Turn the model until its front faces the green FRONT arrow and it sits on the grid.</p>
@@ -124,6 +125,7 @@
           <button id="ws-sel-all" title="select all listed">All</button>
           <button id="ws-sel-similar" title="add parts with the same name stem">Similar</button>
           <button id="ws-sel-none">None</button>
+          <select id="ws-sort" title="order of the parts list"><option value="">CAD order</option><option value="mass">heaviest first</option><option value="tag">by tag</option></select>
           <span id="ws-selcount" class="hint"></span>
         </div>
         <div class="inline tags">

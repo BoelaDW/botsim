@@ -1,6 +1,7 @@
 // CAD parts + the builder's choices -> RobotDef. No DOM here so it can be tested headless.
 import { add, derive, dot, norm, scale, sub } from './build';
 import { combine, meshVolumeProps, principal, type Props } from './massprops';
+import { validateDef } from './robotfile';
 import type { Electrics, Part, RobotDef, Vec3, WeaponType, Wheel } from './types';
 
 export interface RawPart { name: string; color: Vec3 | null; pos: Float32Array; idx: Uint32Array }
@@ -21,25 +22,47 @@ export const MATERIALS: Record<string, { density: number; color: Vec3 }> = {
   'Carbon fibre': { density: 1600, color: [0.15, 0.15, 0.17] },
   'Copper': { density: 8960, color: [0.8, 0.5, 0.3] },
   'Electronics / battery': { density: 1900, color: [0.2, 0.45, 0.25] },
+  'Motor (average)': { density: 4500, color: [0.35, 0.36, 0.4] },        // copper + steel + magnets + air
 };
 
 export function guessMaterial(name: string): string {
-  const n = name.toLowerCase();
+  const n = ' ' + name.toLowerCase().replace(/[_()[\],;:+/]/g, ' ') + ' ';
+  const word = (...w: string[]) => w.some((x) => new RegExp(`(^|[^a-z0-9])${x}([^a-z0-9]|$)`).test(n));
   const has = (...w: string[]) => w.some((x) => n.includes(x));
-  if (has('copper', 'coil')) return 'Copper';
-  if (has('screw', 'bolt', 'nut', 'washer', 'bearing', 'shaft', 'axle', 'pin', 'steel', 'hardox', 'ar500', 'stator', 'rotor', 'spinner', 'disc', 'blade', 'tooth')) return 'Steel';
-  if (has('tpu', 'urethane', 'tread', 'tyre', 'tire', 'rubber', 'belt')) return 'TPU / urethane';
-  if (has('uhmw', 'hdpe')) return 'UHMW / HDPE';
-  if (has('printed', 'pla', 'petg', 'nylon')) return 'PLA / PETG / nylon';
-  if (has('titanium', 'ti-6al', ' ti ')) return 'Titanium';
-  if (has('polycarb')) return 'Polycarbonate';
-  if (has('carbon')) return 'Carbon fibre';
-  if (has('esc', 'battery', 'lipo', 'receiver', 'switch', 'brain', 'pcb', 'placeholder', 'distribution')) return 'Electronics / battery';
+  // 1. the material written in the name wins ("Axle plate (10mm Al)" is aluminium, not steel)
+  if (has('tpu', 'urethane', 'rubber', 'silicone')) return 'TPU / urethane';
+  if (has('uhmw', 'hdpe', 'polyethylene')) return 'UHMW / HDPE';
+  if (has('polycarb', 'lexan') || word('pc')) return 'Polycarbonate';
+  if (has('carbon fib', 'carbon fiber', 'carbon fibre', 'cfrp') || word('cf')) return 'Carbon fibre';
+  if (has('nylon-cf', 'pa-cf', 'pa12', 'pacf')) return 'Nylon-CF / PA12';
+  if (word('abs', 'asa')) return 'ABS / ASA';
+  if (has('printed', 'petg', 'nylon') || word('pla', '3dp')) return 'PLA / PETG / nylon';
+  if (has('titanium', 'ti-6al', 'ti6al', '6al4v', 'ti64') || word('ti', 'gr5')) return 'Titanium';
+  if (has('alumin', '6061', '7075', '5083', '2024', '6082') || word('al', 'alu')) return 'Aluminium';
+  if (has('steel', 'hardox', 'ar500', 'ar400', '4140', '4340', 'tool steel', 'maraging') || word('s7', 'ss')) return 'Steel';
+  if (has('copper', 'coil', 'brass', 'bronze')) return 'Copper';
+  // 2. otherwise guess from what the part is. Structure named after what it holds ("bearing block",
+  //    "motor cage", "axle bracket") is plate stock, not the steel thing in its name.
+  if (has('block', 'housing', 'holder', 'mount', 'bracket', 'plate', 'cage', 'face', 'saddle', 'tower', 'cover', 'guard', 'standoff', 'spacer', 'wall', 'rail', 'pulley', 'hub'))
+    return has('tread', 'tyre', 'tire') ? 'TPU / urethane' : 'Aluminium';
+  if (has('tread', 'tyre', 'tire', 'belt', 'o-ring')) return 'TPU / urethane';
+  if (has('motor', 'gearmotor', 'stator', 'outrunner', 'inrunner') || /\b\d{4}\b.*\bkv\b|\b\d{2,4}\s?kv\b/.test(n)) return 'Motor (average)';
+  if (has('battery', 'lipo', 'lithium', 'cell', 'esc', 'receiver', 'switch', 'brain', 'pcb', 'placeholder', 'distribution', 'electronics')) return 'Electronics / battery';
+  if (has('screw', 'bolt', 'nut', 'washer', 'bearing', 'shaft', 'axle', 'pin', 'rotor', 'spinner', 'disc', 'blade', 'tooth', 'teeth', 'gear', 'sprocket', 'chain')) return 'Steel';
   return 'Aluminium';
 }
 
+/** Why the importer set a part to Ignore by itself. */
+export type AutoIgnore = 'duplicate' | 'reference' | 'detached';
+export const AUTO_IGNORE_TEXT: Record<AutoIgnore, string> = {
+  duplicate: 'an exact copy of another part (same name, shape and place)',
+  reference: 'looks like reference geometry (keep-out, ghost, envelope, ground…)',
+  detached: 'sits well away from the rest of the robot (a spare part left in the assembly?)',
+};
+
 export interface ImportPart extends RawPart {
   tag: Tag;
+  auto?: AutoIgnore;
   material: string;
   fill: number;              // 0..1: solid fraction (3D-printed parts are mostly air)
   massKg: number | null;     // measured mass; overrides material x volume x fill
@@ -85,15 +108,66 @@ export async function initPartsAsync(raw: RawPart[], progress: (done: number) =>
   return finishParts(out);
 }
 
+// names of things that are in the CAD but not in the robot
+const REFERENCE = /keep[\s_-]?(out|clear)|clearance|envelope|ghost|swept|\bground\b|\bfloor\b|\bspace\b|\bzone\b|\bdatum\b/i;
+
 function finishParts(parts: ReturnType<typeof firstPass>[]): ImportPart[] {
+  const auto: (AutoIgnore | undefined)[] = new Array(parts.length);
+  // exact duplicates: some exporters write mirrored / linked bodies twice
+  const seen = new Set<string>();
+  parts.forEach((p, i) => {
+    const key = [p.name, p.pos.length, ...p.lo, ...p.hi].map((v) => (typeof v === 'number' ? Math.round(v * 1e5) : v)).join('|');
+    if (seen.has(key)) auto[i] = 'duplicate';
+    else { seen.add(key); if (REFERENCE.test(p.name)) auto[i] = 'reference'; }
+  });
+  // detached groups: parts whose boxes (grown by 5 mm) never touch the main body of the robot
+  const live = parts.map((_, i) => i).filter((i) => !auto[i]);
+  const root = parts.map((_, i) => i);
+  const find = (i: number): number => (root[i] === i ? i : (root[i] = find(root[i])));
+  const TOL = 0.005;
+  const byX = [...live].sort((a, b) => parts[a].lo[0] - parts[b].lo[0]);
+  for (let a = 0; a < byX.length; a++) {
+    const A = parts[byX[a]];
+    for (let b = a + 1; b < byX.length && parts[byX[b]].lo[0] <= A.hi[0] + TOL; b++) {
+      const B = parts[byX[b]];
+      if (A.lo[1] <= B.hi[1] + TOL && B.lo[1] <= A.hi[1] + TOL && A.lo[2] <= B.hi[2] + TOL && B.lo[2] <= A.hi[2] + TOL) root[find(byX[a])] = find(byX[b]);
+    }
+  }
+  // groups that don't touch are normal (a PCB on standoffs, wheels without a modelled axle); only groups
+  // well outside the main group's envelope are spare parts left lying around in the assembly
+  const groups = new Map<number, { vol: number; lo: Vec3; hi: Vec3 }>();
+  for (const i of live) {
+    const g = groups.get(find(i)) ?? { vol: 0, lo: [Infinity, Infinity, Infinity] as Vec3, hi: [-Infinity, -Infinity, -Infinity] as Vec3 };
+    g.vol += parts[i].vol;
+    for (let k = 0; k < 3; k++) { g.lo[k] = Math.min(g.lo[k], parts[i].lo[k]); g.hi[k] = Math.max(g.hi[k], parts[i].hi[k]); }
+    groups.set(find(i), g);
+  }
+  const main = [...groups.values()].sort((a, b) => b.vol - a.vol)[0];
+  if (main) {
+    const far = Math.max(0.03, 0.1 * Math.hypot(...[0, 1, 2].map((k) => main.hi[k] - main.lo[k])));
+    for (const i of live) {
+      const g = groups.get(find(i))!;
+      const gap = Math.hypot(...[0, 1, 2].map((k) => Math.max(0, g.lo[k] - main.hi[k], main.lo[k] - g.hi[k])));
+      if (gap > far) auto[i] = 'detached';
+    }
+  }
+
   // collision shapes only for the outside of the robot: parts reaching within 10 mm of the overall
   // bounding box (armour, plates, rails, forks). Internals (motors, screws, ESCs) carry mass only.
   const LO: Vec3 = [Infinity, Infinity, Infinity], HI: Vec3 = [-Infinity, -Infinity, -Infinity];
-  for (const p of parts) for (let k = 0; k < 3; k++) { LO[k] = Math.min(LO[k], p.lo[k]); HI[k] = Math.max(HI[k], p.hi[k]); }
-  return parts.map(({ lo, hi, ...p }) => {
+  parts.forEach((p, i) => { if (!auto[i]) for (let k = 0; k < 3; k++) { LO[k] = Math.min(LO[k], p.lo[k]); HI[k] = Math.max(HI[k], p.hi[k]); } });
+  return parts.map(({ lo, hi, ...p }, i) => {
     const outer = [0, 1, 2].some((k) => lo[k] - LO[k] < 0.01 || HI[k] - hi[k] < 0.01);
-    return { ...p, collide: outer && Math.max(...p.size) >= 0.02 && Math.min(...p.size) >= 0.002 };
+    return { ...p, tag: auto[i] ? 'ignore' : p.tag, auto: auto[i], collide: outer && Math.max(...p.size) >= 0.02 && Math.min(...p.size) >= 0.002 };
   });
+}
+
+/** "3 duplicates, 2 reference shapes set to Ignore" (empty if nothing was). */
+export function autoIgnoreSummary(parts: ImportPart[]): string {
+  const n = (r: AutoIgnore) => parts.filter((p) => p.auto === r && p.tag === 'ignore').length;
+  const bits = [[n('duplicate'), 'exact duplicate'], [n('reference'), 'reference shape'], [n('detached'), 'detached part']]
+    .filter(([c]) => c).map(([c, w]) => `${c} ${w}${c === 1 ? '' : 's'}`);
+  return bits.length ? `${bits.join(', ')} set to Ignore (hover them in the list to see why)` : '';
 }
 
 export interface ImportSettings {
@@ -109,7 +183,7 @@ export interface ImportSettings {
   ballast: boolean;
 }
 
-export function defaultElectrics(t: WeaponType): Electrics {
+export function defaultElectrics(t: WeaponType, classKg = 13.6): Electrics {
   const drive = { kv: 1000, r: 0.05, iLimit: 30, rotorJ: 2e-5, ratio: 30, motorsPerSide: 1 };
   const weapon = {
     spinner: { kv: 500, r: 0.015, iLimit: 120, rotorJ: 6e-5, ratio: 2 },
@@ -117,6 +191,9 @@ export function defaultElectrics(t: WeaponType): Electrics {
     lifter: { kv: 1000, r: 0.05, iLimit: 60, rotorJ: 2e-5, ratio: 400 },
     hammer: { kv: 500, r: 0.03, iLimit: 90, rotorJ: 6e-5, ratio: 40 },
   }[t];
+  // rotor inertias above are for featherweight-sized motors; smaller classes have much smaller motors
+  const k = Math.min(1, (classKg / 13.6) ** (5 / 3));
+  drive.rotorJ *= k; weapon.rotorJ *= k;
   return { cells: 6, volts: 6 * 3.7, rBatt: 0.012, drive, weapon };
 }
 
@@ -198,6 +275,12 @@ export function buildDef(parts: ImportPart[], S: ImportSettings): BuildResult {
   const R = S.rot;
   const off = placement(parts, R);
   const used = parts.filter((p) => p.tag !== 'ignore');
+  {   // wrong units show up as absurd sizes: catch them before the numbers get silly
+    const ext = [0, 1, 2].map((k) => Math.max(...used.map((p) => p.center[k] + p.size[k] / 2)) - Math.min(...used.map((p) => p.center[k] - p.size[k] / 2)));
+    const big = Math.max(...ext);
+    if (used.length && big > 3) throw new Error(`The robot is ${big.toFixed(1)} m across: the CAD units are probably wrong (an STL in mm loaded as metres?). Pick the right STL units and load it again.`);
+    if (used.length && big < 0.02) throw new Error(`The robot is only ${(big * 1000).toFixed(1)} mm across: the CAD units are probably wrong (an STL in metres loaded as mm?). Pick the right STL units and load it again.`);
+  }
   const placed = used.map((p) => ({ p, pos: place(p, R, off), mass: partMass(p) }));
 
   // wheels: one per wheel tag in use, axis = principal axis nearest left-right
@@ -220,10 +303,12 @@ export function buildDef(parts: ImportPart[], S: ImportSettings): BuildResult {
     const center = add(pr.c, scale(axis, (a0 + a1) / 2));
     wheelBody.set(tag, 'wheel' + wheels.length);
     wheels.push({ center, axis, radius: r, width: Math.max(0.005, a1 - a0) });
-    info.push(`${tag}: Ø${(2 * r * 1000).toFixed(0)} mm × ${((a1 - a0) * 1000).toFixed(0)} mm at (${center.map((v) => (v * 1000).toFixed(0)).join(', ')}) mm, ${center[0] < 0 ? 'left' : 'right'}`);
+    info.push(`${tag}: Ø${(2 * r * 1000).toFixed(0)} mm × ${((a1 - a0) * 1000).toFixed(0)} mm at (${center.map((v) => (v * 1000).toFixed(0)).join(', ')}) mm`);
   }
   if (!wheels.length) warnings.push('No wheels tagged: the robot will not be able to drive.');
-  const sides = new Set(wheels.map((w) => (w.center[0] < 0 ? 'l' : 'r')));
+  const midX = wheels.reduce((s, w) => s + w.center[0], 0) / Math.max(1, wheels.length);
+  wheels.forEach((w, i) => (info[i] += w.center[0] < midX ? ', left' : ', right'));     // the wheel lines come first
+  const sides = new Set(wheels.map((w) => (w.center[0] < midX ? 'l' : 'r')));
   if (wheels.length && sides.size < 2) warnings.push('All wheels are on one side: check the orientation (front should point to +Y, the green arrow).');
 
   // weapon
@@ -255,6 +340,20 @@ export function buildDef(parts: ImportPart[], S: ImportSettings): BuildResult {
     mass,
     mesh: { pos, idx: p.idx },
   }));
+  // will it stand on its wheels? find colliding parts that reach below the lowest wheel
+  if (wheels.length) {
+    const wheelBottom = Math.min(...wheels.map((w) => w.center[2] - w.radius * Math.hypot(w.axis[0], w.axis[1])));
+    let low = Infinity, lowName = '';
+    for (const p of out) if (p.collide && !p.body.startsWith('wheel')) {
+      const pos = p.mesh!.pos;
+      for (let i = 2; i < pos.length; i += 3) if (pos[i] < low) { low = pos[i]; lowName = p.name; }
+    }
+    if (low < wheelBottom - 0.0005)
+      warnings.push(`"${lowName}" reaches ${((wheelBottom - low) * 1000).toFixed(1)} mm below the wheels, so the robot will sit on it instead of its wheels. ` +
+        'If it isn\'t a real part tag it Ignore, otherwise select it and press No collide (or fix the wheels).');
+    const wb = wheels.map((w) => w.center[2] - w.radius);
+    wheels.forEach((w, i) => { if (wb[i] > wheelBottom + 0.003) info.push(`wheel ${i + 1} sits ${((wb[i] - wheelBottom) * 1000).toFixed(0)} mm above the floor`); });
+  }
   let total = out.reduce((s, p) => s + p.mass, 0);
   if (S.ballast && total < S.targetMass) {
     const ch = combine(out.filter((p) => p.body === 'chassis').map((p) => ({ m: p.mass, c: centroid(p.mesh!.pos), I: [0, 0, 0, 0, 0, 0, 0, 0, 0] })));
@@ -272,7 +371,20 @@ export function buildDef(parts: ImportPart[], S: ImportSettings): BuildResult {
     weapon: { type: S.weaponType, pivot, axis, rangeDeg: spin ? undefined : S.rangeDeg },
     elec: S.elec, tyreMu: 1.0, bodyMu: 0.4,
   };
+  validateDef(def);
   const D = derive(def);
+  if (spin && wg.length && wheels.length) {      // does the spinning weapon clear the floor?
+    const floor = Math.min(...wheels.map((w) => w.center[2] - w.radius));
+    const a = norm(axis), horiz = Math.hypot(a[0], a[1]);
+    // lowest point of the swept circle: pivot height minus the tip radius times how far the disc plane tilts towards vertical
+    const lowest = pivot[2] - D.tipRadius * horiz;
+    let lowestNow = Infinity;
+    for (const x of wg) for (let i = 2; i < x.pos.length; i += 3) lowestNow = Math.min(lowestNow, x.pos[i]);
+    const low = horiz > 0.3 ? lowest : lowestNow;
+    if (low < floor - 0.0005)
+      warnings.push(`The weapon's tip (radius ${(D.tipRadius * 1000).toFixed(0)} mm) sweeps ${((floor - low) * 1000).toFixed(1)} mm into the floor: ` +
+        'it will dig in and stall. Check the pivot, the weapon tags and the wheel sizes.');
+  }
   info.push(`Mass ${D.mass.toFixed(2)} kg (chassis ${(D.massBy.chassis ?? 0).toFixed(2)}, weapon ${(D.massBy.weapon ?? 0).toFixed(2)})`);
   const wRpm = (D.noLoadArmDps / 6).toFixed(0);
   if (spin) info.push(`Weapon no-load: ${wRpm} rpm, tip ${D.noLoadTip.toFixed(0)} m/s at ${(D.tipRadius * 1000).toFixed(0)} mm radius, ` +

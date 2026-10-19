@@ -6,7 +6,9 @@ onmessage = async (e) => {
   const { buf, ext, deflection } = e.data;
   try {
     const occt = await occtReady;
-    const params = { linearUnit: 'meter', linearDeflectionType: 'bounding_box_ratio', linearDeflection: deflection, angularDeflection: 0.5 };
+    // millimetres, scaled to metres below: occt-import-js 0.0.23 mis-scales some nested sub-assemblies
+    // (e.g. vendor parts drawn in inches) by ~50x when asked for metres; millimetre output is right.
+    const params = { linearUnit: 'millimeter', linearDeflectionType: 'bounding_box_ratio', linearDeflection: deflection, angularDeflection: 0.5 };
     const data = new Uint8Array(buf);
     const r = ext === 'iges' || ext === 'igs' ? occt.ReadIgesFile(data, params) : occt.ReadStepFile(data, params);
     if (!r.success) throw new Error('OpenCascade could not read this file');
@@ -17,6 +19,7 @@ onmessage = async (e) => {
     const parts = [], transfer = [];
     r.meshes.forEach((m, i) => {
       const pos = new Float32Array(m.attributes.position.array);
+      for (let k = 0; k < pos.length; k++) pos[k] *= 0.001;
       const idx = new Uint32Array(m.index.array);
       let color = m.color;
       if (!color && m.brep_faces?.length) color = m.brep_faces.find((f) => f.color)?.color;

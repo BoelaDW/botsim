@@ -5,10 +5,11 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { derive, motorSpeed, V_CELL } from './build';
 import { busy, done, paint, readFile } from './busy';
 import {
-  buildDef, defaultElectrics, defaultRange, initPartsAsync, MATERIALS, partMass, placement, rot90, rotMul, WHEEL_TAGS,
+  AUTO_IGNORE_TEXT, autoIgnoreSummary, buildDef, defaultElectrics, defaultRange, initPartsAsync, MATERIALS, partMass, placement, rot90, rotMul, WHEEL_TAGS,
   type BuildResult, type ImportPart, type ImportSettings, type RawPart, type Tag,
 } from './importer';
 import { download, saveBot } from './robotfile';
+import { esc } from './util';
 import { FEATHERWEIGHT_KG, type RobotDef, type Vec3, type WeaponType } from './types';
 
 const TAG_COLOR: Record<string, number> = {
@@ -107,11 +108,15 @@ export class Workshop {
       if (ext === 'stl') {
         busy(`Parsing ${f.name}`);
         await paint();
-        const geo = new STLLoader().parse(buf);
+        let geo: THREE.BufferGeometry;
+        try { geo = new STLLoader().parse(buf); }
+        catch { status.textContent = `${f.name} doesn't look like an STL file (or it's damaged)`; continue; }
         const pos = new Float32Array(geo.getAttribute('position').array as ArrayLike<number>);
         for (let i = 0; i < pos.length; i++) pos[i] *= stlScale;
         const idx = new Uint32Array(pos.length / 3).map((_, i) => i);
-        raw.push({ name: f.name.replace(/\.stl$/i, ''), color: null, pos, idx });
+        const part = cleanParts([{ name: f.name.replace(/\.stl$/i, ''), color: null, pos, idx }]);
+        if (!part.length) { status.textContent = `${f.name} has no usable triangles`; continue; }
+        raw.push(...part);
       } else {
         busy(`Converting ${f.name} with OpenCascade`, undefined, 'big assemblies take 10–60 s');
         raw.push(...(await parseCad(buf, ext, quality)));
@@ -119,22 +124,44 @@ export class Workshop {
       status.textContent = `${f.name}: read in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
     }
     if (!raw.length) return;
-    this.fileName = files[0].name.replace(/\.[^.]+$/, '');
-    $<HTMLInputElement>('#ws-name', this.root).value ||= this.fileName;
+    const newName = files[0].name.replace(/\.[^.]+$/, '');
+    // the same file again (an updated export): keep the setup and carry tags etc. over by part name
+    const again = newName === this.fileName && this.parts.length > 0;
+    const nameEl = $<HTMLInputElement>('#ws-name', this.root);
+    if (!again) {
+      nameEl.value = newName;
+      this.rot = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+      $('#ws-report', this.root).innerHTML = '';
+    }
+    this.fileName = newName;
     busy('Measuring parts', 0, `${raw.length} parts`);
     const parts = await initPartsAsync(raw, (f) => busy('Measuring parts', f, `${Math.round(f * raw.length)} / ${raw.length} parts`));
+    let carried = 0;
+    if (again) {
+      const old = new Map<string, ImportPart[]>();
+      for (const p of this.parts) old.set(p.name, [...(old.get(p.name) ?? []), p]);
+      for (const p of parts) {
+        const o = old.get(p.name)?.shift();
+        if (!o) continue;
+        Object.assign(p, { tag: o.tag, material: o.material, fill: o.fill, massKg: o.massKg, collide: o.collide });
+        carried++;
+      }
+    }
     busy('Preparing the 3D view', 1);
     await paint();
-    this.setParts(parts);
-    status.textContent += ` — ${raw.length} parts. Orient it, then tag parts (click in the view, shift-click to add).`;
+    this.setParts(parts, again);
+    const auto = again ? '' : autoIgnoreSummary(parts);
+    status.textContent += ` — ${raw.length} parts. ` + (again
+      ? `Same file as before: kept the setup and the tags of ${carried} parts${carried < parts.length ? ` (${parts.length - carried} new parts start as chassis)` : ''}.`
+      : `${auto ? auto + '. ' : ''}Orient it, then tag parts (click in the view, shift-click to add).`);
   }
 
-  setParts(parts: ImportPart[]) {
+  setParts(parts: ImportPart[], keepPivot = false) {
     for (const m of this.meshes) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); }
     this.model.clear();
     this.parts = parts;
     this.selected.clear();
-    this.pivot = null;
+    if (!keepPivot) { this.pivot = null; $('#ws-pivot-state', this.root).textContent = 'pivot: weapon centre of mass'; }
     this.meshes = parts.map((p, i) => {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(p.pos, 3));
@@ -183,13 +210,19 @@ export class Workshop {
     const list = $('#ws-parts', this.root);
     const filter = $<HTMLInputElement>('#ws-filter', this.root).value.toLowerCase();
     const rows: string[] = [];
-    this.parts.forEach((p, i) => {
+    const sort = $<HTMLSelectElement>('#ws-sort', this.root).value;
+    const order = this.parts.map((_, i) => i);
+    if (sort === 'mass') order.sort((a, b) => partMass(this.parts[b]) - partMass(this.parts[a]));
+    if (sort === 'tag') order.sort((a, b) => this.parts[a].tag.localeCompare(this.parts[b].tag) || a - b);
+    order.forEach((i) => {
+      const p = this.parts[i];
       if (filter && !p.name.toLowerCase().includes(filter)) return;
       const g = partMass(p) * 1000;
       const custom = p.massKg !== null ? 'weighed' : p.fill < 1 ? `${Math.round(p.fill * 100)}% fill` : '';
+      const why = p.auto && p.tag === 'ignore' ? ` — ignored automatically: ${AUTO_IGNORE_TEXT[p.auto]}` : '';
       rows.push(`<div class="row${this.selected.has(i) ? ' sel' : ''}" data-i="${i}">
         <span class="tag t-${p.tag}">${tagLabel(p.tag)}</span>
-        <span class="nm" title="${esc(p.name)} — ${esc(p.material)}${custom ? ', ' + custom : ''}">${esc(p.name) || '(unnamed)'}</span>
+        <span class="nm" title="${esc(p.name)} — ${esc(p.material)}${custom ? ', ' + custom : ''}${esc(why)}">${esc(p.name) || '(unnamed)'}${why ? ' <i class="hint">(' + p.auto + ')</i>' : ''}</span>
         <span class="g${custom ? ' custom' : ''}" title="${custom || esc(p.material)}">${g < 10 ? g.toFixed(1) : g.toFixed(0)} g</span>
         <span class="c" title="collision shape">${p.collide ? '◼' : '·'}</span></div>`);
     });
@@ -275,7 +308,7 @@ export class Workshop {
   settings(): ImportSettings {
     const num = (id: string) => parseFloat($<HTMLInputElement>('#' + id, this.root).value);
     const type = $<HTMLSelectElement>('#ws-wtype', this.root).value as WeaponType;
-    const elec = defaultElectrics(type);
+    const elec = defaultElectrics(type, num('ws-target') || FEATHERWEIGHT_KG);
     elec.cells = num('ws-cells');
     elec.volts = num('ws-volts') || elec.cells * V_CELL;
     const ratio = (id: string) => {
@@ -369,7 +402,11 @@ export class Workshop {
   wireUi() {
     const R = this.root;
     const fileIn = $<HTMLInputElement>('#ws-file', R);
-    fileIn.addEventListener('change', () => fileIn.files?.length && this.loadFiles([...fileIn.files]));
+    fileIn.addEventListener('change', () => {
+      const files = [...(fileIn.files ?? [])];
+      fileIn.value = '';                      // so picking the same (updated) file again still fires 'change'
+      if (files.length) this.loadFiles(files);
+    });
     const drop = $('#ws-view', R);
     drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag'); });
     drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
@@ -387,6 +424,7 @@ export class Workshop {
       if (row) this.select(+row.dataset.i!, e.shiftKey || e.ctrlKey || e.metaKey);
     });
     $('#ws-filter', R).addEventListener('input', () => this.renderList());
+    $('#ws-sort', R).addEventListener('change', () => this.renderList());
     $('#ws-sel-all', R).addEventListener('click', () => {
       const f = $<HTMLInputElement>('#ws-filter', R).value.toLowerCase();
       this.parts.forEach((p, i) => (!f || p.name.toLowerCase().includes(f)) && this.selected.add(i));
@@ -505,16 +543,26 @@ function tagLabel(t: Tag): string {
   return t === 'chassis' ? 'chassis' : t === 'weapon' ? 'weapon' : t === 'ignore' ? 'ignore' : 'wheel ' + t.slice(5);
 }
 
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 let worker: Worker | null = null;
 function parseCad(buf: ArrayBuffer, ext: string, deflection: number): Promise<RawPart[]> {
   worker ??= new Worker(new URL('occt/step-worker.js', document.baseURI));
-  return new Promise((resolve, reject) => {
-    worker!.onmessage = (e) => (e.data.ok ? resolve(e.data.parts as RawPart[]) : reject(new Error(e.data.error)));
-    worker!.onerror = (e) => reject(new Error(e.message || 'STEP worker failed'));
-    worker!.postMessage({ buf, ext, deflection }, [buf]);
-  });
+  const w = worker;
+  return new Promise<RawPart[]>((resolve, reject) => {
+    w.onmessage = (e) => (e.data.ok ? resolve(e.data.parts as RawPart[]) : reject(new Error(e.data.error)));
+    w.onerror = (e) => {
+      // OpenCascade may have run out of memory: start a fresh worker next time instead of reusing a broken one
+      w.terminate();
+      if (worker === w) worker = null;
+      reject(new Error((e.message || 'the STEP reader crashed') + ' (the file may be too big or damaged: try "coarse" mesh detail)'));
+    };
+    w.postMessage({ buf, ext, deflection }, [buf]);
+  }).then(cleanParts);
+}
+
+/** Drop parts that can't be used: no triangles, or NaN / infinite coordinates. */
+function cleanParts(parts: RawPart[]): RawPart[] {
+  return parts.filter((p) => p.idx.length >= 3 && p.pos.length >= 9 && p.pos.every(Number.isFinite));
 }
 
 function textSprite(text: string, color: number): THREE.Sprite {

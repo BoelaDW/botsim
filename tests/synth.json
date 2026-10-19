@@ -1,0 +1,18 @@
+[
+ { "name": "Shell spinner", "file": "testfiles/synth/shell_spinner.step", "weapon": "spinner",
+   "tags": [["^Shell", "weapon"], ["^Wheel left", "wheel1"], ["^Wheel right", "wheel2"]] },
+ { "name": "Eggbeater", "file": "testfiles/synth/eggbeater.step", "weapon": "drum",
+   "tags": [["^Beater", "weapon"], ["^Drive wheel L", "wheel1"], ["^Drive wheel R", "wheel2"]] },
+ { "name": "6WD flipper", "file": "testfiles/synth/sixwheel_flipper.step", "weapon": "lifter", "pivot": "^Flipper hinge", "range": [0, 60],
+   "tags": [["^Flipper (plate|arm)", "weapon"], ["^Wheel front L", "wheel1"], ["^Wheel middle L", "wheel2"], ["^Wheel rear L", "wheel3"],
+            ["^Wheel front R", "wheel4"], ["^Wheel middle R", "wheel5"], ["^Wheel rear R", "wheel6"]] },
+ { "name": "Side hammer", "file": "testfiles/synth/side_hammer.step", "weapon": "hammer", "weaponAxis": "y", "reverse": true, "pivot": "^Hammer hinge", "range": [0, 180],
+   "tags": [["^Hammer (arm|head)", "weapon"], ["^Wheel L1", "wheel1"], ["^Wheel L2", "wheel2"], ["^Wheel R1", "wheel3"], ["^Wheel R2", "wheel4"]] },
+ { "name": "Side hammer (inch STLs)", "file": "testfiles/synth/side_hammer_stl/", "units": 0.0254, "weapon": "hammer", "weaponAxis": "y", "reverse": true, "pivot": "^Hammer_hinge", "range": [0, 180],
+   "tags": [["^Hammer_(arm|head)", "weapon"], ["^Wheel_L1", "wheel1"], ["^Wheel_L2", "wheel2"], ["^Wheel_R1", "wheel3"], ["^Wheel_R2", "wheel4"]] },
+ { "name": "Camber vert", "file": "testfiles/synth/camber_vert.step", "weapon": "spinner",
+   "tags": [["^Disc", "weapon"], ["^Wheel L", "wheel1"], ["^Wheel R", "wheel2"]] },
+ { "name": "Camber vert (Y-up)", "file": "testfiles/synth/camber_vert_yup.step", "weapon": "spinner", "rot": [["x", 1]],
+   "tags": [["^Disc", "weapon"], ["^Wheel L", "wheel1"], ["^Wheel R", "wheel2"]] },
+ { "name": "Camber vert (one STL)", "file": "testfiles/synth/camber_vert_single.stl", "weapon": "spinner", "tags": [], "fightSeconds": 5 }
+]

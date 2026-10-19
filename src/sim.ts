@@ -93,7 +93,7 @@ export class Bot {
     }
     const wv = qvel[this.wV];
     const tw = this.weapon.torque(weapon, wv * D.weaponRatio, this.vBus);
-    const drag = this.spinner ? 2.5e-6 * wv * Math.abs(wv) : 0;
+    const drag = D.weaponDrag * wv * Math.abs(wv);
     ctrl[this.act.weapon] = tw - drag / D.weaponRatio;
     iTotal += Math.abs(this.weapon.current);
     this.vBus = D.vBatt - E.rBatt * iTotal;

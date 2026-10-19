@@ -22,6 +22,9 @@ for (const path of files) {
     const def = await loadBot(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
     const D = derive(def);
     line = `${path}: "${def.name}"${def.author ? ' by ' + def.author : ''}, ${def.weapon.type}, ${D.mass.toFixed(2)} kg`;
+    for (const [what, v] of [['name', def.name], ['builder', def.author], ['description', def.description]] as const)
+      if (v && /[<>]/.test(v)) problems.push(`the ${what} contains < or >: please use plain text`);
+    if (def.name.length > 60) problems.push('the name is longer than 60 characters');
     if (D.mass > FEATHERWEIGHT_KG + 0.005) problems.push(`overweight: ${D.mass.toFixed(2)} kg (limit ${FEATHERWEIGHT_KG} kg)`);
     if (D.driven.l < 0 || D.driven.r < 0) problems.push('needs driven wheels on both sides');
     const sim = new Sim(mj, { p1: def, p2: null, dummy: false, timestep: TIMESTEP });

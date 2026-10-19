@@ -8,6 +8,7 @@ import { ArenaView } from './render';
 import { loadBot } from './robotfile';
 import { getMujoco, Sim } from './sim';
 import type { RobotDef } from './types';
+import { esc } from './util';
 import { Workshop } from './workshop';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -24,7 +25,7 @@ let page: 'arena' | 'gallery' | 'workshop' = 'arena';
 
 // ---------------------------------------------------------------- setup panel
 function fillRobotLists(p1?: number, p2?: number) {
-  const opts = robots.map((r, i) => `<option value="${i}">${r.name}</option>`).join('');
+  const opts = robots.map((r, i) => `<option value="${i}">${esc(r.name)}${r.author ? ' — ' + esc(r.author) : ''}</option>`).join('');
   const a = $<HTMLSelectElement>('p1-robot'), b = $<HTMLSelectElement>('p2-robot');
   const keepA = p1 ?? +a.value, keepB = p2 ?? (b.value === '' ? 1 : +b.value);
   a.innerHTML = opts;
@@ -39,7 +40,8 @@ function showSetup(show: boolean) {
 
 let starting = false;
 async function startMatch() {
-  if (!mj || starting) return;
+  if (!mj) { status('The physics engine is still loading: try again in a moment'); return; }
+  if (starting) return;
   const i1 = +$<HTMLSelectElement>('p1-robot').value, i2 = +$<HTMLSelectElement>('p2-robot').value;
   const p2 = i2 >= 0 ? robots[i2] : null;
   const timestep = parseFloat($<HTMLSelectElement>('timestep').value);
@@ -229,7 +231,7 @@ function hud() {
       ? `<div class="row"><span>Weapon tip</span><span>${b.tipSpeed(d.qvel).toFixed(0)} m/s · ${(b.energy(d.qvel) / 1000).toFixed(2)} kJ</span></div>`
       : `<div class="row"><span>Arm</span><span>${b.armDeg(d.qpos).toFixed(0)}°</span></div>`;
     const amps = Math.abs(b.drive.l.current) + Math.abs(b.drive.r.current) + Math.abs(b.weapon.current);
-    return `<div class="bot"><h4><span class="p${i + 1}">P${i + 1}</span> ${b.def.name} <span class="hint">${drivers[i].label}</span></h4>
+    return `<div class="bot"><h4><span class="p${i + 1}">P${i + 1}</span> ${esc(b.def.name)} <span class="hint">${esc(drivers[i].label)}</span></h4>
       <div class="row"><span>Speed</span><span>${b.forwardSpeed(d.xmat, d.qvel).toFixed(1)} m/s</span></div>${wpn}
       <div class="row"><span>Battery</span><span>${b.vBus.toFixed(1)} V · ${amps.toFixed(0)} A</span></div>
       ${up ? '<div class="bad">UPSIDE DOWN (driving inverted)</div>' : side ? '<div class="bad">ON ITS SIDE</div>' : ''}</div>`;
@@ -244,6 +246,25 @@ setupTouch($('arena'), {
   pause: () => { paused = !paused; },
 });
 $<HTMLSelectElement>('touch-mode').addEventListener('change', (e) => { touch.oneStick = (e.target as HTMLSelectElement).value === 'one'; document.body.classList.toggle('one-stick', touch.oneStick); });
+
+// a file dropped anywhere must never make the browser navigate away from the app (losing the Workshop setup)
+addEventListener('dragover', (e) => e.preventDefault());
+addEventListener('drop', async (e) => {
+  e.preventDefault();
+  const files = [...(e.dataTransfer?.files ?? [])];
+  if (!files.length || !$('busy')?.hidden) return;
+  if (files.some((f) => /\.(step|stp|iges|igs|stl)$/i.test(f.name))) {
+    if (page !== 'workshop') setPage('workshop');
+    if (!(e.target as HTMLElement).closest?.('#ws-view')) workshop.loadFiles(files);   // the view handles its own drops
+  } else if (files.some((f) => /\.bot$/i.test(f.name))) {
+    setPage('arena');
+    for (const f of files) {
+      try { robots.push(await loadBot((await readFile(f, 'buffer', `Loading ${f.name}`)) as ArrayBuffer)); fillRobotLists(robots.length - 1); status(`Loaded ${f.name}`); }
+      catch (err) { status(`${f.name}: ${err instanceof Error ? err.message : err}`); }
+      finally { done(); }
+    }
+  } else status(`Can't use ${files[0].name}: drop STEP / STL files (Workshop) or .bot robots (Arena)`);
+});
 
 // ---------------------------------------------------------------- boot
 fillRobotLists(0, 1);

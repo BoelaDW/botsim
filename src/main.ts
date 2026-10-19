@@ -1,5 +1,6 @@
 // App shell: tabs, match setup, the game loop and the HUD.
 import { BUILTINS } from './builtin';
+import { MOCKUPS } from './config';
 import { busy, done, paint, readFile } from './busy';
 import { fetchBot, Gallery } from './gallery';
 import { setupTouch, touch } from './touch';
@@ -15,6 +16,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const status = (s: string) => ($('status').textContent = s);
 
 const robots: RobotDef[] = [...BUILTINS];
+const builtIn = new Set<RobotDef>(BUILTINS);          // can't be removed (plus the mock-ups loaded at start)
 // without WebGL (switched off, blocklisted driver, locked-down PC) there is no 3D: say so plainly and keep the
 // rest (gallery, file handling) working instead of dying on a blank page
 const hasWebGL = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } })();
@@ -37,7 +39,7 @@ let page: 'arena' | 'gallery' | 'workshop' = 'arena';
 
 // ---------------------------------------------------------------- setup panel
 function fillRobotLists(p1?: number, p2?: number) {
-  const opts = robots.map((r, i) => `<option value="${i}">${esc(r.name)}${r.author ? ' — ' + esc(r.author) : ''}</option>`).join('');
+  const opts = robots.map((r, i) => `<option value="${i}">${esc(r.name)}${r.author && !builtIn.has(r) ? ' — ' + esc(r.author) : ''}</option>`).join('');
   const a = $<HTMLSelectElement>('p1-robot'), b = $<HTMLSelectElement>('p2-robot');
   const keepA = p1 ?? +a.value, keepB = p2 ?? (b.value === '' ? 1 : +b.value);
   a.innerHTML = opts;
@@ -110,7 +112,7 @@ $<HTMLInputElement>('bot-file').addEventListener('change', async (e) => {
 /** Drop a robot from the lists (built-ins stay). */
 function removeRobot(i: number) {
   const r = robots[i];
-  if (!r || BUILTINS.includes(r)) { status(r ? `${r.name} is built in and can't be removed` : 'Pick a robot first'); return false; }
+  if (!r || builtIn.has(r)) { status(r ? `${r.name} is built in and can't be removed` : 'Pick a robot first'); return false; }
   if (sim && defs.includes(r)) { sim.dispose(); sim = null; view.clear(); showSetup(true); }
   const a = +$<HTMLSelectElement>('p1-robot').value, b = +$<HTMLSelectElement>('p2-robot').value;
   robots.splice(i, 1);
@@ -135,7 +137,7 @@ function setPage(p: typeof page) {
 
 /** Add (or replace a same-named) robot and pick it for player 1. */
 function addRobot(def: RobotDef): number {
-  const existing = robots.findIndex((r) => r.name === def.name && !BUILTINS.includes(r));
+  const existing = robots.findIndex((r) => r.name === def.name && !builtIn.has(r));
   if (existing >= 0) robots[existing] = def; else robots.push(def);
   const i = existing >= 0 ? existing : robots.length - 1;
   fillRobotLists(i);
@@ -153,7 +155,7 @@ const workshop: Workshop = !hasWebGL ? ({ active: false, resize() {}, loadFiles(
   setPage('arena');
   startMatch();
 }, (name) => {
-  const i = robots.findIndex((r) => r.name === name && !BUILTINS.includes(r));
+  const i = robots.findIndex((r) => r.name === name && !builtIn.has(r));
   if (i >= 0) removeRobot(i);
 });
 
@@ -284,7 +286,25 @@ addEventListener('drop', async (e) => {
 // ---------------------------------------------------------------- boot
 fillRobotLists(0, 1);
 requestAnimationFrame(frame);
+// mock-up robots made from CAD (tests/mockups.json): loaded quietly, they join the built-ins
+const mockups = Promise.all(MOCKUPS.map(async (f) => {
+  try {
+    const res = await fetch('builtin/' + f);
+    if (!res.ok || res.headers.get('content-type')?.includes('text/html')) return null;
+    return await loadBot(await res.arrayBuffer());
+  } catch (e) { console.warn('mock-up robot', f, e); return null; }
+})).then((defs) => {
+  const ok = defs.filter((d): d is RobotDef => !!d);
+  ok.forEach((d) => builtIn.add(d));
+  const at = BUILTINS.length;
+  robots.splice(at, 0, ...ok);
+  // keep each list on the robot it showed, now that indexes after the built-ins have shifted
+  const a = +$<HTMLSelectElement>('p1-robot').value, b = +$<HTMLSelectElement>('p2-robot').value;
+  fillRobotLists(a >= at ? a + ok.length : a, b >= at ? b + ok.length : b);
+});
+
 getMujoco().then(async (m) => {
+  await mockups;
   mj = m;
   status(hasWebGL ? 'Physics ready. Pick robots and press Start (or Enter).' : NO_GL);
   const linked = new URLSearchParams(location.search).get('bot');     // share links: ?bot=file.bot

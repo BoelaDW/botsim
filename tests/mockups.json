@@ -1,0 +1,156 @@
+[
+ {
+  "name": "Shell Shock",
+  "saveAs": "shell-shock.bot",
+  "file": "testfiles/synth/shell_spinner.step",
+  "weapon": "spinner",
+  "description": "Full-body shell spinner: a 420 mm ring around everything, two wheels inside. Slow to spin up, brutal when it's there.",
+  "tags": [
+   [
+    "^Shell",
+    "weapon"
+   ],
+   [
+    "^Wheel left",
+    "wheel1"
+   ],
+   [
+    "^Wheel right",
+    "wheel2"
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 1000,
+    "r": 0.012,
+    "iLimit": 160,
+    "ratio": 4
+   }
+  }
+ },
+ {
+  "name": "Eggbeater",
+  "saveAs": "eggbeater.bot",
+  "file": "testfiles/synth/eggbeater.step",
+  "weapon": "drum",
+  "description": "Two-hoop eggbeater on forks, two-wheel drive.",
+  "tags": [
+   [
+    "^Beater",
+    "weapon"
+   ],
+   [
+    "^Drive wheel L",
+    "wheel1"
+   ],
+   [
+    "^Drive wheel R",
+    "wheel2"
+   ]
+  ]
+ },
+ {
+  "name": "Six Pack",
+  "saveAs": "six-pack.bot",
+  "file": "testfiles/synth/sixwheel_flipper.step",
+  "weapon": "lifter",
+  "pivot": "^Flipper hinge",
+  "range": [
+   0,
+   60
+  ],
+  "description": "Six-wheel drop-centre pusher with a full-width front lifter.",
+  "tags": [
+   [
+    "^Flipper (plate|arm)",
+    "weapon"
+   ],
+   [
+    "^Wheel front L",
+    "wheel1"
+   ],
+   [
+    "^Wheel middle L",
+    "wheel2"
+   ],
+   [
+    "^Wheel rear L",
+    "wheel3"
+   ],
+   [
+    "^Wheel front R",
+    "wheel4"
+   ],
+   [
+    "^Wheel middle R",
+    "wheel5"
+   ],
+   [
+    "^Wheel rear R",
+    "wheel6"
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "ratio": 250
+   }
+  }
+ },
+ {
+  "name": "Sidewinder",
+  "saveAs": "sidewinder.bot",
+  "file": "testfiles/synth/side_hammer.step",
+  "weapon": "hammer",
+  "weaponAxis": "y",
+  "reverse": true,
+  "pivot": "^Hammer hinge",
+  "range": [
+   0,
+   180
+  ],
+  "description": "Hammer that swings over the top from the right side. Drive alongside the opponent.",
+  "tags": [
+   [
+    "^Hammer (arm|head)",
+    "weapon"
+   ],
+   [
+    "^Wheel L1",
+    "wheel1"
+   ],
+   [
+    "^Wheel L2",
+    "wheel2"
+   ],
+   [
+    "^Wheel R1",
+    "wheel3"
+   ],
+   [
+    "^Wheel R2",
+    "wheel4"
+   ]
+  ]
+ },
+ {
+  "name": "Tilt",
+  "saveAs": "tilt.bot",
+  "file": "testfiles/synth/camber_vert.step",
+  "weapon": "spinner",
+  "description": "Vertical disc spinner on cambered wheels.",
+  "tags": [
+   [
+    "^Disc",
+    "weapon"
+   ],
+   [
+    "^Wheel L",
+    "wheel1"
+   ],
+   [
+    "^Wheel R",
+    "wheel2"
+   ]
+  ]
+ }
+]

@@ -32,7 +32,7 @@ save('shell_spinner', [
     ('Chassis plate', cyl(150, 6, V(0, 0, 8), V(0, 0, 1))),
     ('Shell', shell), ('Shell tooth A', teeth[0]), ('Shell tooth B', teeth[1]),
     ('Bearing hub', cyl(30, 50, V(0, 0, 14), V(0, 0, 1))),
-    ('Wheel left', wheelX(-90, 0, 30, 30, 20)), ('Wheel right', wheelX(90, 0, 30, 30, 20)),
+    ('Wheel left', wheelX(-135, 0, 30, 30, 20)), ('Wheel right', wheelX(135, 0, 30, 30, 20)),
     ('Battery', box(-60, -100, 14, 60, -50, 50)), ('Electronics', box(-50, 50, 14, 50, 100, 40)),
     ('Skid front', box(-20, 120, 0.5, 20, 140, 8)), ('Skid rear', box(-20, -140, 0.5, 20, -120, 8)),
 ])
@@ -80,10 +80,10 @@ save('side_hammer', [
 def camber(x, y, z, r, w, s):
     c = wheelX(x, y, z, r, w); c.rotate(V(x, y, z), V(0, 1, 0), 10 * s); return c
 vbot = [('Base', box(-120, -150, 12, 120, 150, 18)), ('Lid', box(-120, -150, 90, 120, 150, 94)),
-        ('Disc', cyl(120, 12, V(-6, 190, 130), V(1, 0, 0))), ('Disc tooth', box(-6, 300, 140, 6, 330, 160)),
-        ('Weapon upright L', box(-30, 100, 18, -15, 230, 140)), ('Weapon upright R', box(15, 100, 18, 30, 230, 140)),
-        ('Wheel L', camber(-150, -60, 45, 45, 25, 1)), ('Wheel R', camber(150, -60, 45, 45, 25, -1)),
-        ('Skid', box(-40, 100, 0, 40, 150, 12))]
+        ('Disc', cyl(120, 12, V(-6, 190, 160), V(1, 0, 0))), ('Disc tooth', box(-6, 300, 170, 6, 330, 190)),
+        ('Weapon upright L', box(-30, 100, 18, -15, 230, 170)), ('Weapon upright R', box(15, 100, 18, 30, 230, 170)),
+        ('Wheel L', camber(-150, 60, 45, 45, 25, 1)), ('Wheel R', camber(150, 60, 45, 45, 25, -1)),
+        ('Skid', box(-40, 100, 3, 40, 150, 12)), ('Rear skid', box(-40, -150, 3, 40, -120, 12))]
 save('camber_vert', vbot, stl='single')
 yup = []
 for label, sh in vbot:

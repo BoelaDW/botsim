@@ -15,7 +15,8 @@
     "validate": "rolldown tests/validate_robots.ts --format esm --platform node --external @mujoco/mujoco --file tests/.out/validate.mjs && node tests/.out/validate.mjs",
     "stress": "rolldown tests/stress.ts --format esm --platform node --external @mujoco/mujoco --file tests/.out/stress.mjs && node tests/.out/stress.mjs",
     "fuzz": "rolldown tests/fuzz.ts --format esm --platform node --external @mujoco/mujoco --file tests/.out/fuzz.mjs && node tests/.out/fuzz.mjs",
-    "torture": "rolldown tests/torture.ts --format esm --platform node --external @mujoco/mujoco --file tests/.out/torture.mjs && node tests/.out/torture.mjs"
+    "torture": "rolldown tests/torture.ts --format esm --platform node --external @mujoco/mujoco --file tests/.out/torture.mjs && node tests/.out/torture.mjs",
+    "mockups": "rolldown tests/stress.ts --format esm --platform node --external @mujoco/mujoco --file tests/.out/stress.mjs && SAVE=public/builtin node tests/.out/stress.mjs tests/mockups.json"
   },
   "dependencies": {
     "@mujoco/mujoco": "3.16.0",

@@ -12,7 +12,9 @@ Three pages:
 - **Workshop** — load a STEP / IGES / STL, orient it, tag parts (chassis / weapon / wheel 1–6 / ignore),
   set materials, motors and battery, then test it in the arena or save a `.bot` file to share.
 
-Built-in robots (boxes and cylinders, guessed specs): Wide vert (spinner), Drum, Lifter, Hammer.
+Built-in robots (boxes and cylinders, guessed specs): Wide vert (spinner), Drum, Lifter, Hammer. Plus five mock-ups
+made from CAD through the Workshop pipeline (`tests/mockups.json`, rebuilt with `npm run mockups`): Shell Shock
+(shell spinner), Eggbeater, Six Pack (6WD lifter), Sidewinder (side-swinging hammer) and Tilt (vertical disc).
 
 ## Run it
 

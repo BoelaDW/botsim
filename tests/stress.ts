@@ -30,6 +30,8 @@ interface Rule {
   elec?: { volts?: number; weapon?: Record<string, number>; drive?: Record<string, number> };
   targetMass?: number;
   fightSeconds?: number;
+  description?: string;                 // stored in the robot (shown in lists / gallery)
+  saveAs?: string;                      // with SAVE=dir: file name for the .bot
 }
 
 const require = createRequire(import.meta.url);
@@ -244,10 +246,12 @@ for (const R of rules) {
   console.log(`\n=== ${R.name} (${R.file})`);
   try {
     const { def } = importRobot(R);
+    if (R.description) def.description = R.description;
+    def.author = 'BotSim mock-ups';
     const D = derive(def);
     if (D.mass > (R.targetMass ?? 13.6) + 0.01) flag(R.name, `mass ${D.mass.toFixed(2)} kg over the limit`);
     const back = await loadBot(await (await saveBot(def)).arrayBuffer());
-    if (process.env.SAVE) (await import('node:fs')).writeFileSync(`${process.env.SAVE}/${R.name.replace(/\W+/g, '_')}.bot`, new Uint8Array(await (await saveBot(def)).arrayBuffer()));
+    if (process.env.SAVE) (await import('node:fs')).writeFileSync(`${process.env.SAVE}/${R.saveAs ?? R.name.replace(/\W+/g, '_') + '.bot'}`, new Uint8Array(await (await saveBot(def)).arrayBuffer()));
     if (back.parts.length !== def.parts.length) flag(R.name, '.bot round trip lost parts');
     if (process.env.QUICK) continue;             // import checks only
     restingContacts(back, R.name);

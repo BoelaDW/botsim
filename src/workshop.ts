@@ -5,7 +5,7 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { derive, motorSpeed, V_CELL } from './build';
 import { busy, done, paint, readFile } from './busy';
 import {
-  AUTO_IGNORE_TEXT, autoIgnoreSummary, buildDef, defaultElectrics, defaultRange, initPartsAsync, MATERIALS, partMass, placement, rot90, rotMul, WHEEL_TAGS,
+  AUTO_IGNORE_TEXT, autoIgnoreSummary, buildDef, measureParts, splitPieces, defaultElectrics, defaultRange, initPartsAsync, MATERIALS, partMass, placement, rot90, rotMul, WHEEL_TAGS,
   type BuildResult, type ImportPart, type ImportSettings, type RawPart, type Tag,
 } from './importer';
 import { download, saveBot } from './robotfile';
@@ -118,12 +118,19 @@ export class Workshop {
         if (!part.length) { status.textContent = `${f.name} has no usable triangles`; continue; }
         raw.push(...part);
       } else {
-        busy(`Converting ${f.name} with OpenCascade`, undefined, 'big assemblies take 10–60 s');
+        busy(`Converting ${f.name} with OpenCascade`, undefined, f.size > 8e6 ? 'big file: this can take a minute or two' : 'big assemblies take 10–60 s');
         raw.push(...(await parseCad(buf, ext, quality)));
       }
       status.textContent = `${f.name}: read in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
     }
     if (!raw.length) return;
+    let split = '';
+    if (raw.length === 1) {          // one mesh holding several solids (IGES, whole-robot STL): separate them
+      busy('Separating the pieces');
+      await paint();
+      const pieces = splitPieces(raw[0]);
+      if (pieces.length > 1) { split = ` Split the single mesh into ${pieces.length} separate pieces.`; raw.splice(0, 1, ...pieces); }
+    }
     const newName = files[0].name.replace(/\.[^.]+$/, '');
     // the same file again (an updated export): keep the setup and carry tags etc. over by part name
     const again = newName === this.fileName && this.parts.length > 0;
@@ -153,7 +160,7 @@ export class Workshop {
     const auto = again ? '' : autoIgnoreSummary(parts);
     status.textContent += ` — ${raw.length} parts. ` + (again
       ? `Same file as before: kept the setup and the tags of ${carried} parts${carried < parts.length ? ` (${parts.length - carried} new parts start as chassis)` : ''}.`
-      : `${auto ? auto + '. ' : ''}Orient it, then tag parts (click in the view, shift-click to add).`);
+      : `${auto ? auto + '. ' : ''}${split} Orient it, then tag parts (click in the view, shift-click to add).`);
   }
 
   setParts(parts: ImportPart[], keepPivot = false) {
@@ -480,6 +487,20 @@ export class Workshop {
     $('#ws-mass-clear', R).addEventListener('click', () => { for (const i of this.selected) this.parts[i].massKg = null; this.refresh(); });
     $('#ws-collide-on', R).addEventListener('click', () => { for (const i of this.selected) this.parts[i].collide = true; this.refresh(); });
     $('#ws-collide-off', R).addEventListener('click', () => { for (const i of this.selected) this.parts[i].collide = false; this.refresh(); });
+    $('#ws-split', R).addEventListener('click', () => {
+      const out: ImportPart[] = [];
+      let made = 0;
+      this.parts.forEach((p, i) => {
+        const pieces = this.selected.has(i) ? splitPieces(p) : [p];
+        if (pieces.length < 2) { out.push(p); return; }
+        made += pieces.length;
+        // pieces keep the parent's tag and material; collision follows the usual size rule
+        for (const q of measureParts(pieces)) out.push({ ...q, tag: p.tag, material: p.material, fill: p.fill, collide: p.collide && q.collide });
+      });
+      if (!made) { $('#ws-status', R).textContent = 'Nothing to split: the selected parts are each one solid.'; return; }
+      this.setParts(out, true);
+      $('#ws-status', R).textContent = `Split into ${made} pieces.`;
+    });
     $('#ws-pivot', R).addEventListener('click', () => {
       if (!this.selected.size) return;
       const lo: Vec3 = [Infinity, Infinity, Infinity], hi: Vec3 = [-Infinity, -Infinity, -Infinity];

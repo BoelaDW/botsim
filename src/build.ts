@@ -89,6 +89,7 @@ export interface Derived {
   mass: number;
   massBy: Record<string, number>;
   minZ: number;                       // lowest colliding point (robot frame)
+  reach: number;                      // furthest colliding point from the chassis origin, sideways (for spawning)
   vBatt: number;
 }
 
@@ -139,7 +140,10 @@ export function derive(def: RobotDef): Derived {
   for (const p of def.parts) if (p.collide && !p.body.startsWith('wheel')) for (const q of partPoints(p)) minZ = Math.min(minZ, q[2]);
   for (const w of def.wheels) minZ = Math.min(minZ, w.center[2] - w.radius);
   if (!isFinite(minZ)) minZ = 0;
-  return { bodies, origin, wheelSide, driveRatio, driven, weaponRatio, tipRadius, weaponJ, topSpeed, noLoadTip, noLoadArmDps, weaponDrag, sizeScale: Math.min(1, (mass / 13.6) ** (5 / 3)), mass, massBy, minZ, vBatt };
+  let reach = 0.2;
+  for (const p of def.parts) if (p.collide) for (const q of partPoints(p)) reach = Math.max(reach, Math.hypot(q[0], q[1]));
+  for (const w of def.wheels) reach = Math.max(reach, Math.hypot(w.center[0], w.center[1]) + w.radius);
+  return { bodies, origin, wheelSide, driveRatio, driven, weaponRatio, tipRadius, weaponJ, topSpeed, noLoadTip, noLoadArmDps, weaponDrag, sizeScale: Math.min(1, (mass / 13.6) ** (5 / 3)), mass, massBy, minZ, reach, vBatt };
 }
 
 function quatZ(deg: number): string {

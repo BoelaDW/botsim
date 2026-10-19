@@ -52,6 +52,9 @@ First pad = P1, second pad = P2. Browsers only report a pad after one of its but
 6. **Check** shows detected wheels (blue) and the weapon axis (yellow) on the model, plus mass and energy.
    **Test in arena** drops it straight into a match.
 
+A file that arrives as one mesh (IGES, or a whole robot saved as one STL) is split into its separate solids
+automatically; **Split** does the same for selected parts (a body holding both wheels, say).
+
 On import, exact duplicate parts, reference shapes (keep-outs, ghosts, envelopes, ground slabs) and spare parts
 lying well away from the robot are set to Ignore automatically (hover them in the list to see why; re-tag them if
 that's wrong). **Check** warns about parts that reach below the wheels (the robot would sit on them), spinning
@@ -85,6 +88,7 @@ the weight limit and runs it in the arena. Merge it and the site redeploys with 
 ```sh
 npm test              # headless: every built-in robot drives / spins up / stays upright, plus a fight
 npm run fuzz          # broken files, corrupted robots, silly Workshop settings: rejected cleanly or simulated without NaNs
+npm run torture       # physics extremes, every pairing at 0.5 / 0.1 ms steps, a 5-minute fight, 500 build/teardowns
 npm run validate      # the gallery check (public/robots/*.bot, or files given as arguments)
 npm run stress -- tests/synth.json        # import STEP robots by rules, drive them, fight every built-in, flag blow-ups
 ```

@@ -77,6 +77,9 @@ export class Bot {
 
   /** throttle, steer in [-1, 1] (tank mix). weapon: spinner 0..1; arm -1..1 (+ = lift / swing). */
   setControls(ctrl: Float64Array, qvel: Float64Array, xmat: Float64Array, thr: number, steer: number, weapon: number) {
+    // whatever a driver sends (a broken gamepad can report NaN or Infinity), the motors only see -1..1
+    const ok = (x: number) => (Number.isFinite(x) ? Math.max(-1, Math.min(1, x)) : 0);
+    thr = ok(thr); steer = ok(steer); weapon = ok(weapon);
     this.cmd = { thr, steer, weapon };
     if (this.upsideDown(xmat)) thr = -thr;
     const E = this.def.elec, D = this.D;
@@ -117,8 +120,11 @@ export class Sim {
   compileMs = 0;
   constructor(public mj: Mj, setup: Setup) {
     const t0 = performance.now();
-    const entries: Entry[] = [{ def: setup.p1, derived: derive(setup.p1), prefix: 'p1_', xy: [0, -1.5], heading: 90 }];
-    if (setup.p2) entries.push({ def: setup.p2, derived: derive(setup.p2), prefix: 'p2_', xy: [0, 1.5], heading: -90 });
+    const d1 = derive(setup.p1), d2 = setup.p2 ? derive(setup.p2) : null;
+    // start 3 m apart, further if the robots are so big they would overlap (capped by the arena)
+    const half = Math.min(3.3, Math.max(3, d1.reach + (d2?.reach ?? 0) + 0.3)) / 2;
+    const entries: Entry[] = [{ def: setup.p1, derived: d1, prefix: 'p1_', xy: [0, -half], heading: 90 }];
+    if (setup.p2) entries.push({ def: setup.p2, derived: d2!, prefix: 'p2_', xy: [0, half], heading: -90 });
     const xml = worldXml(entries, setup.dummy && !setup.p2, setup.timestep);
     try {
       this.m = mj.MjModel.from_xml_string(xml);
@@ -129,6 +135,13 @@ export class Sim {
     this.d = new mj.MjData(this.m);
     mj.mj_forward(this.m, this.d);
     this.bots = entries.map((e) => new Bot(mj, this.m, e.def, e.derived, e.prefix));
+    // an arm whose range leaves out its CAD pose (0) starts at the nearest end instead of fighting the limit
+    for (const b of this.bots) {
+      const r = b.def.weapon.rangeDeg;
+      if (b.spinner || !r) continue;
+      const a = Math.min(Math.max(0, r[0]), r[1]) * Math.PI / 180;
+      if (a !== 0) { this.d.qpos[b.wQ] = a; mj.mj_forward(this.m, this.d); }
+    }
     this.compileMs = performance.now() - t0;
   }
 

@@ -80,6 +80,42 @@ function bbox(pos: Float32Array): { lo: Vec3; hi: Vec3 } {
   return { lo, hi };
 }
 
+/** Split a mesh into its separate solids (pieces that share no vertex position). IGES files and
+ *  whole-robot STLs arrive as one mesh; this makes their wheels and weapon taggable again. */
+export function splitPieces(p: RawPart, minTris = 4): RawPart[] {
+  const n = p.pos.length / 3, tris = p.idx.length / 3;
+  if (tris < 2 * minTris) return [p];
+  // weld by position at 0.1 mm (an exact numeric key: 17 bits per axis covers ±6.5 m)
+  const key = new Map<number, number>(), weld = new Uint32Array(n);
+  for (let i = 0; i < n; i++) {
+    const q = (k: number) => Math.round(p.pos[i * 3 + k] * 1e4) + 65536;
+    const h = (q(0) * 131072 + q(1)) * 131072 + q(2);
+    let w = key.get(h);
+    if (w === undefined) { w = key.size; key.set(h, w); }
+    weld[i] = w;
+  }
+  const root = new Uint32Array(key.size).map((_, i) => i);
+  const find = (i: number): number => { while (root[i] !== i) { root[i] = root[root[i]]; i = root[i]; } return i; };
+  for (let t = 0; t < tris; t++) {
+    const a = find(weld[p.idx[t * 3]]);
+    for (const k of [1, 2]) { const b = find(weld[p.idx[t * 3 + k]]); if (a !== b) root[b] = a; }
+  }
+  const groups = new Map<number, number[]>();
+  for (let t = 0; t < tris; t++) { const g = find(weld[p.idx[t * 3]]); let l = groups.get(g); if (!l) groups.set(g, (l = [])); l.push(t); }
+  if (groups.size < 2) return [p];
+  const pieces = [...groups.values()].filter((l) => l.length >= minTris).sort((a, b) => b.length - a.length);
+  return pieces.map((list, k) => {
+    const map = new Map<number, number>(), pos: number[] = [], idx = new Uint32Array(list.length * 3);
+    list.forEach((t, j) => { for (let c = 0; c < 3; c++) {
+      const v = p.idx[t * 3 + c];
+      let m = map.get(v);
+      if (m === undefined) { m = map.size; map.set(v, m); pos.push(p.pos[v * 3], p.pos[v * 3 + 1], p.pos[v * 3 + 2]); }
+      idx[j * 3 + c] = m;
+    } });
+    return { name: `${p.name || 'Piece'} ${k + 1}`, color: p.color, pos: Float32Array.from(pos), idx };
+  });
+}
+
 export const partMass = (p: ImportPart) => p.massKg ?? MATERIALS[p.material].density * p.vol * p.fill;
 
 function firstPass(r: RawPart) {
@@ -90,6 +126,11 @@ function firstPass(r: RawPart) {
   if (!(vol > 0) || vol > 1.05 * boxVol) vol = 0.5 * boxVol;   // open mesh: rough guess (refined at build)
   const material = guessMaterial(r.name);
   return { ...r, tag: 'chassis' as Tag, material, fill: 1, massKg: null, collide: false, vol, size, center: scale(add(lo, hi), 0.5), lo, hi };
+}
+
+/** Measure new pieces made inside the Workshop (no auto-ignore pass: the user asked for them). */
+export function measureParts(raw: RawPart[]): ImportPart[] {
+  return raw.map(firstPass).map(({ lo, hi, ...p }) => ({ ...p, collide: Math.max(...p.size) >= 0.02 && Math.min(...p.size) >= 0.002 }));
 }
 
 /** First pass over freshly loaded parts: volume, bounds, default material and collision. */
@@ -278,7 +319,7 @@ export function buildDef(parts: ImportPart[], S: ImportSettings): BuildResult {
   {   // wrong units show up as absurd sizes: catch them before the numbers get silly
     const ext = [0, 1, 2].map((k) => Math.max(...used.map((p) => p.center[k] + p.size[k] / 2)) - Math.min(...used.map((p) => p.center[k] - p.size[k] / 2)));
     const big = Math.max(...ext);
-    if (used.length && big > 3) throw new Error(`The robot is ${big.toFixed(1)} m across: the CAD units are probably wrong (an STL in mm loaded as metres?). Pick the right STL units and load it again.`);
+    if (used.length && big > 2) throw new Error(`The robot is ${big.toFixed(1)} m across: the CAD units are probably wrong (an STL in mm loaded as metres?). Pick the right STL units and load it again.`);
     if (used.length && big < 0.02) throw new Error(`The robot is only ${(big * 1000).toFixed(1)} mm across: the CAD units are probably wrong (an STL in metres loaded as mm?). Pick the right STL units and load it again.`);
   }
   const placed = used.map((p) => ({ p, pos: place(p, R, off), mass: partMass(p) }));
@@ -291,6 +332,14 @@ export function buildDef(parts: ImportPart[], S: ImportSettings): BuildResult {
     if (!g.length) continue;
     const pr = groupProps(g.map((x) => ({ pos: x.pos, idx: x.p.idx, mass: x.mass })));
     const axis = snap(axisNear(pr.I, [1, 0, 0]));
+    {   // a wheel is round about one axis: if that axis isn't left-right, the model is turned the wrong way
+      const { moments, axes } = principal(pr.I);
+      const odd = [0, 1, 2].map((i) => { const o = moments.filter((_, j) => j !== i); return { i, eq: Math.abs(o[0] - o[1]) / Math.max(o[0], o[1]), diff: Math.abs(moments[i] - (o[0] + o[1]) / 2) / Math.max(...moments) }; })
+        .sort((a, b) => a.eq - b.eq)[0];
+      if (odd.eq < 0.05 && odd.diff > 0.1 && Math.abs(axes[odd.i][0]) < 0.8)
+        warnings.push(`${tag.replace('wheel', 'Wheel ')} looks round about the ${['left-right', 'front-back', 'up-down'][[0, 1, 2].reduce((b, k) => (Math.abs(axes[odd.i][k]) > Math.abs(axes[odd.i][b]) ? k : b), 0)]} axis, not left-right: ` +
+          'turn the model so its axles run along the red RIGHT arrow (step 2), or check that only wheel parts have this tag.');
+    }
     let r = 0;
     const pts: { along: number; rad: number }[] = [];
     for (const x of g) for (let i = 0; i < x.pos.length; i += 3) {
@@ -373,6 +422,12 @@ export function buildDef(parts: ImportPart[], S: ImportSettings): BuildResult {
   };
   validateDef(def);
   const D = derive(def);
+  if (!spin && (S.rangeDeg[0] > 0 || S.rangeDeg[1] < 0))
+    warnings.push(`The arm's range ${S.rangeDeg[0]}..${S.rangeDeg[1]}° doesn't include the position it has in the CAD (0°): it will start at ${S.rangeDeg[0] > 0 ? S.rangeDeg[0] : S.rangeDeg[1]}°, which may put it inside the robot.`);
+  if (spin && wg.length) {     // a weapon spinning about a point away from its centre of mass shakes the robot apart
+    const off = sub(wp.c, pivot), along = dot(off, norm(axis)), radial = Math.hypot(...sub(off, scale(norm(axis), along)));
+    if (radial > 0.003) warnings.push(`The weapon's centre of mass is ${(radial * 1000).toFixed(0)} mm off its spin axis: it is badly unbalanced (wrong pivot, or a part tagged weapon that isn't?).`);
+  }
   if (spin && wg.length && wheels.length) {      // does the spinning weapon clear the floor?
     const floor = Math.min(...wheels.map((w) => w.center[2] - w.radius));
     const a = norm(axis), horiz = Math.hypot(a[0], a[1]);
@@ -395,7 +450,8 @@ export function buildDef(parts: ImportPart[], S: ImportSettings): BuildResult {
   if (D.topSpeed > 12) warnings.push(`Drive speed ${D.topSpeed.toFixed(1)} m/s is unusually high: check the drive kV and reduction.`);
   const colliding = out.filter((p) => p.collide && !p.body.startsWith('wheel')).length;
   info.push(`${colliding} collision shapes (convex hulls), ${out.length} parts`);
-  if (colliding > 120) warnings.push(`${colliding} collision shapes is a lot: untick "collide" on small internal parts to speed things up.`);
+  if (colliding > 120) warnings.push(`${colliding} collision shapes is a lot: the match will run slowly (about ${Math.round(colliding / 14)}× the physics work of FROG V3). ` +
+    'Select small internal parts and press No collide: only the outside of the robot needs to collide.');
   return { def, warnings, info };
 }
 

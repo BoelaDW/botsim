@@ -1,11 +1,13 @@
 // Three.js view of the arena: robot bodies follow MuJoCo's body poses each frame.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ARENA, WALL_H } from './build';
 import type { Sim } from './sim';
 import type { Part, RobotDef } from './types';
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);       // MuJoCo is Z-up
+const SHARED = new THREE.MeshBasicMaterial();   // placeholder while building merged geometry
 
 export function partObject(p: Part, mat?: THREE.Material): THREE.Mesh {
   const material = mat ?? new THREE.MeshStandardMaterial({ color: new THREE.Color(...p.color), metalness: 0.35, roughness: 0.55 });
@@ -114,8 +116,20 @@ export class ArenaView {
       for (const [name, body] of Object.entries(bot.bodyIds)) {
         const group = new THREE.Group();
         const o = bot.D.origin[name];
+        // one mesh per colour per body: thousands of separate parts would be thousands of draw calls
+        const byColor = new Map<string, THREE.BufferGeometry[]>();
         for (const p of def.parts) if (p.body === name) {
-          const m = partObject(p);
+          const g = partObject(p, SHARED).geometry;
+          (g.index ? g : g.setIndex([...Array(g.getAttribute('position').count).keys()]));
+          for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+          const key = p.color.map((c) => c.toFixed(3)).join(',');
+          byColor.set(key, [...(byColor.get(key) ?? []), g]);
+        }
+        for (const [key, geos] of byColor) {
+          const merged = mergeGeometries(geos, false) ?? geos[0];
+          if (merged !== geos[0] || geos.length > 1) geos.forEach((g) => g !== merged && g.dispose());
+          const m = new THREE.Mesh(merged, new THREE.MeshStandardMaterial({ color: new THREE.Color(...key.split(',').map(Number) as [number, number, number]), metalness: 0.35, roughness: 0.55 }));
+          m.castShadow = m.receiveShadow = true;
           m.position.set(-o[0], -o[1], -o[2]);
           group.add(m);
         }

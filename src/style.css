@@ -162,3 +162,4 @@ body.touch button, body.touch select { touch-action: manipulation; }
     background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 11px; color: var(--muted); pointer-events: none; width: 130px; text-align: center; }
   body.touch #hud { flex-direction: column; align-items: flex-start; }
 }
+.no-gl { position: absolute; z-index: 20; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 32px)); font-size: 14px; color: var(--warn); }

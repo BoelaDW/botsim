@@ -70,11 +70,11 @@ export class Human implements Driver {
     this.label = this.player === 1 && touch.active ? 'touch' : this.useKeys ? 'keys' : 'waiting for pad';
     if (pad) {
       this.label = 'pad: ' + pad.id.slice(0, 28) + (pad.mapping === 'standard' ? '' : ' (non-standard mapping!)');
-      const dz = (v: number) => (Math.abs(v) < 0.08 ? 0 : v);
+      const dz = (v: number) => (!Number.isFinite(v) || Math.abs(v) < 0.08 ? 0 : Math.max(-1, Math.min(1, v)));
       if (dz(pad.axes[1] ?? 0)) thr = -dz(pad.axes[1]);
       if (dz(pad.axes[2] ?? 0)) steer = dz(pad.axes[2]) * 0.8;
       const rt = pad.buttons[7]?.value ?? 0;      // right trigger
-      if (rt > 0.03) analog = rt;
+      if (rt > 0.03) analog = Math.min(1, rt);
       half ||= !!pad.buttons[4]?.pressed;         // left bumper
     }
     if (half) { thr *= 0.5; steer *= 0.5; }

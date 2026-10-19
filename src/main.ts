@@ -15,7 +15,19 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const status = (s: string) => ($('status').textContent = s);
 
 const robots: RobotDef[] = [...BUILTINS];
-const view = new ArenaView($<HTMLCanvasElement>('arena-canvas'));
+// without WebGL (switched off, blocklisted driver, locked-down PC) there is no 3D: say so plainly and keep the
+// rest (gallery, file handling) working instead of dying on a blank page
+const hasWebGL = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } })();
+const NO_GL = "This browser can't show 3D graphics right now (WebGL is switched off or not supported). " +
+  'Try an up-to-date Chrome, Edge or Firefox, and make sure hardware acceleration is on in its settings.';
+if (!hasWebGL) for (const id of ['arena', 'workshop']) {
+  const m = document.createElement('div');
+  m.className = 'no-gl panel';
+  m.textContent = NO_GL;
+  $(id).prepend(m);
+}
+const view: ArenaView = hasWebGL ? new ArenaView($<HTMLCanvasElement>('arena-canvas'))
+  : ({ follow: 0, load() {}, clear() {}, resize() {}, draw() {} } as unknown as ArenaView);
 let mj: Awaited<ReturnType<typeof getMujoco>> | null = null;
 let sim: Sim | null = null;
 let drivers: Driver[] = [];
@@ -40,6 +52,7 @@ function showSetup(show: boolean) {
 
 let starting = false;
 async function startMatch() {
+  if (!hasWebGL) { status(NO_GL); return; }
   if (!mj) { status('The physics engine is still loading: try again in a moment'); return; }
   if (starting) return;
   const i1 = +$<HTMLSelectElement>('p1-robot').value, i2 = +$<HTMLSelectElement>('p2-robot').value;
@@ -135,7 +148,7 @@ const gallery = new Gallery($('gallery'), (def, fight) => {
   if (fight) { setPage('arena'); startMatch(); }
 });
 
-const workshop = new Workshop($('workshop'), (def) => {
+const workshop: Workshop = !hasWebGL ? ({ active: false, resize() {}, loadFiles() { status(NO_GL); } } as unknown as Workshop) : new Workshop($('workshop'), (def) => {
   addRobot(def);
   setPage('arena');
   startMatch();
@@ -151,19 +164,21 @@ let last = performance.now();
 function globalKeys() {
   if (takePress('Escape')) showSetup($('setup').classList.contains('hidden'));
   if (!$('setup').classList.contains('hidden') && takePress('Enter')) { startMatch(); return; }
-  if (!sim) return;
-  if (takePress('KeyR')) startMatch();
+  const s = sim;
+  if (!s || starting) return;
+  // a reset rebuilds the match asynchronously (sim is null meanwhile): nothing else may run this frame
+  if (takePress('KeyR')) { startMatch(); return; }
   if (takePress('KeyP')) paused = !paused;
-  if (takePress('KeyC')) view.follow = (view.follow + 1) % (sim.bots.length + 1);
+  if (takePress('KeyC')) view.follow = (view.follow + 1) % (s.bots.length + 1);
   if (takePress('KeyF')) flip(0);
   if (takePress('KeyG')) flip(1);
-  gamepads().forEach((pad, slot) => {
-    if (padEdge(pad, 0)) startMatch();                               // A
+  for (const [slot, pad] of gamepads().entries()) {
+    if (padEdge(pad, 0)) { startMatch(); return; }                   // A
     if (padEdge(pad, 1)) flip(slot);                                 // B
-    if (padEdge(pad, 3)) view.follow = (view.follow + 1) % (sim!.bots.length + 1);   // Y
+    if (padEdge(pad, 3)) view.follow = (view.follow + 1) % (s.bots.length + 1);   // Y
     if (padEdge(pad, 8)) paused = !paused;                           // Back / Share
     if (padEdge(pad, 9)) showSetup($('setup').classList.contains('hidden'));   // Start / Options
-  });
+  }
 }
 
 function flip(i: number) {
@@ -271,7 +286,7 @@ fillRobotLists(0, 1);
 requestAnimationFrame(frame);
 getMujoco().then(async (m) => {
   mj = m;
-  status('Physics ready. Pick robots and press Start (or Enter).');
+  status(hasWebGL ? 'Physics ready. Pick robots and press Start (or Enter).' : NO_GL);
   const linked = new URLSearchParams(location.search).get('bot');     // share links: ?bot=file.bot
   if (linked) {
     try {

@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 import { BUILTINS } from '../src/builtin';
 import { derive, TIMESTEP } from '../src/build';
 import {
-  buildDef, defaultElectrics, defaultRange, initParts, rot90, rotMul, type ImportPart, type ImportSettings, type RawPart, type Tag,
+  buildDef, defaultElectrics, defaultRange, initParts, rot90, rotMul, splitPieces, type ImportPart, type ImportSettings, type RawPart, type Tag,
 } from '../src/importer';
 import { AI } from '../src/input';
 import { loadBot, saveBot } from '../src/robotfile';
@@ -66,7 +66,8 @@ function parseStl(buf: Buffer, scale: number): Float32Array {
 
 function importRobot(R: Rule): { def: RobotDef; parts: ImportPart[] } {
   let t = performance.now();
-  const raw = readCad(R.file, R.units);
+  let raw = readCad(R.file, R.units);
+  if (raw.length === 1) raw = splitPieces(raw[0]);         // same as the Workshop does
   const parts = initParts(raw);
   for (const [re, tag] of R.tags) { const rx = new RegExp(re, 'i'); parts.forEach((p) => rx.test(p.name) && (p.tag = tag)); }
   for (const [re, m] of R.material ?? []) { const rx = new RegExp(re, 'i'); parts.forEach((p) => rx.test(p.name) && (p.material = m)); }
@@ -248,6 +249,7 @@ for (const R of rules) {
     const back = await loadBot(await (await saveBot(def)).arrayBuffer());
     if (process.env.SAVE) (await import('node:fs')).writeFileSync(`${process.env.SAVE}/${R.name.replace(/\W+/g, '_')}.bot`, new Uint8Array(await (await saveBot(def)).arrayBuffer()));
     if (back.parts.length !== def.parts.length) flag(R.name, '.bot round trip lost parts');
+    if (process.env.QUICK) continue;             // import checks only
     restingContacts(back, R.name);
     drive(back, R.name);
     upsideDown(back, R.name);

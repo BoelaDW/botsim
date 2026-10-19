@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BotSim (proof of concept)</title>
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <header>
+    <b class="logo">BotSim</b><span class="poc">proof of concept</span>
+    <nav>
+      <button class="tab active" data-tab="arena">Arena</button>
+      <button class="tab" data-tab="workshop">Workshop</button>
+    </nav>
+    <span id="status">Loading physics…</span>
+  </header>
+
+  <main>
+    <!-- ARENA -->
+    <section id="arena" class="page active">
+      <canvas id="arena-canvas"></canvas>
+      <div id="setup" class="panel">
+        <h3>Match</h3>
+        <div class="robot-row">
+          <label>Player 1 robot <select id="p1-robot"></select></label>
+          <button id="p1-remove" class="danger" title="remove this robot from the list (built-in robots stay)">Remove</button>
+        </div>
+        <div class="robot-row">
+          <label>Player 2 robot <select id="p2-robot"></select></label>
+          <button id="p2-remove" class="danger" title="remove this robot from the list (built-in robots stay)">Remove</button>
+        </div>
+        <label>Player 2 driver
+          <select id="p2-driver"><option value="ai">AI</option><option value="human">Human (2nd pad / arrow keys)</option></select>
+        </label>
+        <label>Physics step
+          <select id="timestep">
+            <option value="0.0002">0.2 ms (default)</option>
+            <option value="0.0005">0.5 ms (faster, less accurate)</option>
+            <option value="0.0001">0.1 ms (slower, more accurate)</option>
+          </select>
+        </label>
+        <button id="start" class="primary">Start match (Enter)</button>
+        <label class="file">Load a .bot file <input id="bot-file" type="file" accept=".bot,.json" multiple /></label>
+        <details>
+          <summary>Controls</summary>
+          <table class="keys">
+            <tr><th></th><th>Gamepad</th><th>P1 keys</th><th>P2 keys</th></tr>
+            <tr><td>Drive</td><td>left stick ↕</td><td>W / S</td><td>↑ / ↓</td></tr>
+            <tr><td>Steer</td><td>right stick ↔</td><td>A / D</td><td>← / →</td></tr>
+            <tr><td>Weapon</td><td>right trigger</td><td>Space</td><td>Enter</td></tr>
+            <tr><td>Half speed</td><td>LB</td><td>L-Shift</td><td>R-Shift</td></tr>
+            <tr><td>Self-right (cheat)</td><td>B</td><td>F</td><td>G</td></tr>
+            <tr><td>Reset match</td><td>A</td><td colspan="2">R</td></tr>
+            <tr><td>Camera</td><td>Y</td><td colspan="2">C (free / follow P1 / follow P2)</td></tr>
+            <tr><td>Pause</td><td>Back/Share</td><td colspan="2">P</td></tr>
+            <tr><td>This menu</td><td>Start/Options</td><td colspan="2">Esc</td></tr>
+          </table>
+          <p class="hint">Spinner weapons: Space/Enter toggles, the trigger is a throttle. Arms: hold to lift/swing, release to return.
+            Browsers only show a gamepad after you press one of its buttons.</p>
+        </details>
+      </div>
+      <div id="hud"></div>
+      <div id="perf"></div>
+      <div id="pads"></div>
+      <div id="paused" hidden>PAUSED</div>
+    </section>
+
+    <!-- WORKSHOP -->
+    <section id="workshop" class="page">
+      <div class="ws-side panel">
+        <h3>1. Load CAD</h3>
+        <label class="file big">STEP / IGES / STL files (or drop them on the view)
+          <input id="ws-file" type="file" accept=".step,.stp,.iges,.igs,.stl" multiple /></label>
+        <div class="inline">
+          <label>Mesh detail <select id="ws-quality">
+            <option value="0.003">coarse (fast)</option><option value="0.001" selected>normal</option><option value="0.0004">fine</option></select></label>
+          <label>STL units <select id="ws-stl-units">
+            <option value="0.001">mm</option><option value="0.0254">inch</option><option value="1">m</option></select></label>
+        </div>
+        <div id="ws-status" class="hint"></div>
+
+        <h3>2. Orientation</h3>
+        <p class="hint">Turn the model until its front faces the green FRONT arrow and it sits on the grid.</p>
+        <div class="inline rot">
+          <button data-rot="x,1">X +90°</button><button data-rot="x,-1">X −90°</button>
+          <button data-rot="y,1">Y +90°</button><button data-rot="y,-1">Y −90°</button>
+          <button data-rot="z,1">Z +90°</button><button data-rot="z,-1">Z −90°</button>
+        </div>
+
+        <h3>3. Tag parts</h3>
+        <p class="hint">Click parts in the view or the list (shift-click adds). Each wheel = one tag (tyre + hub + pulley…). Everything starts as chassis.</p>
+        <div class="inline">
+          <input id="ws-filter" placeholder="filter by name" />
+          <button id="ws-sel-all" title="select all listed">All</button>
+          <button id="ws-sel-similar" title="add parts with the same name stem">Similar</button>
+          <button id="ws-sel-none">None</button>
+          <span id="ws-selcount" class="hint"></span>
+        </div>
+        <div class="inline tags">
+          <button data-tag="chassis">Chassis</button><button data-tag="weapon" class="t-weapon">Weapon</button>
+          <button data-tag="wheel1" class="t-wheel1">Wheel 1</button><button data-tag="wheel2" class="t-wheel2">Wheel 2</button>
+          <button data-tag="wheel3" class="t-wheel3">Wheel 3</button><button data-tag="wheel4" class="t-wheel4">Wheel 4</button>
+          <button data-tag="wheel5" class="t-wheel5">Wheel 5</button><button data-tag="wheel6" class="t-wheel6">Wheel 6</button>
+          <button data-tag="ignore">Ignore</button>
+        </div>
+        <div class="sel-edit">
+          <div id="ws-selinfo" class="hint">Nothing selected</div>
+          <div class="inline">
+            <select id="ws-material" title="material (sets density)"></select>
+            <label>Fill % <input id="ws-fill" type="number" min="1" max="100" step="5" value="100" /></label>
+            <button id="ws-fill-set" title="solid fraction: 3D prints are mostly air (walls + infill). 100 = solid">Apply fill</button>
+          </div>
+          <div class="inline">
+            <label>Weighed mass (g) <input id="ws-massg" type="number" min="0" step="1" placeholder="from CAD" /></label>
+            <button id="ws-mass-set" title="use a real measured mass. With several parts selected, the total is split by volume">Set</button>
+            <button id="ws-mass-clear" title="back to material × volume × fill">Use CAD</button>
+          </div>
+          <div class="inline">
+            <button id="ws-collide-on" title="give the selection collision shapes">Collide</button>
+            <button id="ws-collide-off" title="mass only, no collision">No collide</button>
+            <label class="check"><input id="ws-colorby" type="checkbox" checked /> colour by tag</label>
+          </div>
+        </div>
+        <div id="ws-parts" class="parts"></div>
+
+        <h3>4. Weapon</h3>
+        <div class="grid2">
+          <label>Type <select id="ws-wtype">
+            <option value="spinner">Spinner (bar / disc, vertical or horizontal)</option>
+            <option value="drum">Drum / eggbeater</option>
+            <option value="lifter">Lifter</option>
+            <option value="hammer">Hammer / axe</option></select></label>
+          <label>Spin / hinge axis <select id="ws-waxis">
+            <option value="auto">auto-detect</option><option value="x">X (left-right)</option>
+            <option value="y">Y (front-back)</option><option value="z">Z (vertical)</option></select></label>
+          <label class="check"><input id="ws-wrev" type="checkbox" /> reverse direction</label>
+          <span></span>
+          <label class="arm-only">Arm range min (deg) <input id="ws-rmin" type="number" /></label>
+          <label class="arm-only">Arm range max (deg) <input id="ws-rmax" type="number" /></label>
+        </div>
+        <div class="inline">
+          <button id="ws-pivot" title="select the axle / hinge parts first">Pivot = selection</button>
+          <button id="ws-pivot-clear">Pivot = weapon CoM</button>
+          <span id="ws-pivot-state" class="hint">pivot: weapon centre of mass</span>
+        </div>
+
+        <h3>5. Motors &amp; battery</h3>
+        <div class="grid3">
+          <label>Battery cells (S) <input id="ws-cells" type="number" value="6" min="1" max="12" /></label>
+          <label>Voltage (V) <input id="ws-volts" type="number" value="22.2" step="0.1" title="nominal is 3.7 V per cell, fully charged 4.2" /></label>
+          <span></span>
+          <label>Weapon kV <input id="ws-wkv" type="number" /></label>
+          <label>Weapon R (Ω) <input id="ws-wr" type="number" step="0.001" title="winding resistance (motor spec sheet)" /></label>
+          <label>Weapon ESC limit (A) <input id="ws-wi" type="number" /></label>
+          <label>Weapon reduction <input id="ws-wratio" title="motor turns per weapon turn. 1 = direct drive. Pulleys: 36/12. Stages multiply: 36/12*4" /></label>
+        </div>
+        <div id="ws-wcalc" class="calc"></div>
+        <div class="grid3">
+          <label>Drive kV <input id="ws-dkv" type="number" value="1000" /></label>
+          <label>Drive R (Ω) <input id="ws-dr" type="number" value="0.05" step="0.005" /></label>
+          <label>Drive ESC limit (A) <input id="ws-di" type="number" value="30" /></label>
+          <label>Drive reduction <input id="ws-dratio" value="30" title="motor turns per wheel turn (gearbox × pulleys), e.g. 27 or 19.2*20/16" /></label>
+          <label>Motors per side <input id="ws-dn" type="number" value="1" min="1" max="4" /></label>
+        </div>
+        <div id="ws-dcalc" class="calc"></div>
+        <p class="hint">Reductions take a number, a ratio like <code>36/12</code> or <code>3:1</code> (driven ÷ driving teeth), or <code>5.2*36/16</code> for several stages.</p>
+
+        <h3>6. Mass</h3>
+        <div id="ws-mass" class="hint"></div>
+        <div class="inline">
+          <label>Weight limit (kg) <input id="ws-target" type="number" value="13.6" step="0.1" /></label>
+          <label class="check"><input id="ws-ballast" type="checkbox" checked /> fill up to the limit with chassis ballast</label>
+        </div>
+
+        <h3>7. Build</h3>
+        <label>Robot name <input id="ws-name" /></label>
+        <div class="inline">
+          <button id="ws-check">Check</button>
+          <button id="ws-test" class="primary">Test in arena</button>
+          <button id="ws-save">Save .bot file</button>
+          <button id="ws-remove" class="danger" title="clear the workshop and drop this robot from the arena list">Remove robot</button>
+        </div>
+        <div id="ws-report" class="report"></div>
+      </div>
+      <div id="ws-view"><canvas id="ws-canvas"></canvas><div class="drop-hint">Drop STEP / STL files here</div></div>
+    </section>
+  </main>
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+node_modules
+dist
+testfiles
+tests/.out
+public/occt/occt-import-js.*

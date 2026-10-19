@@ -1,0 +1,26 @@
+{
+  "name": "botsim-poc",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Proof of concept: browser combat robot sim (MuJoCo WASM + Three.js) with STEP import",
+  "scripts": {
+    "predev": "node scripts/copy-occt.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/copy-occt.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "rolldown tests/headless.ts --format esm --platform node --external @mujoco/mujoco --file tests/.out/headless.mjs && node tests/.out/headless.mjs",
+    "test:import": "rolldown tests/import_frog.ts --format esm --platform node --external @mujoco/mujoco --file tests/.out/import.mjs && node tests/.out/import.mjs"
+  },
+  "dependencies": {
+    "@mujoco/mujoco": "3.16.0",
+    "occt-import-js": "0.0.23",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.186.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.4"
+  }
+}

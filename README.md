@@ -90,6 +90,7 @@ the weight limit and runs it in the arena. Merge it and the site redeploys with 
 ```sh
 npm test              # headless: every built-in robot drives / spins up / stays upright, plus a fight
 npm run fuzz          # broken files, corrupted robots, silly Workshop settings: rejected cleanly or simulated without NaNs
+npm run league        # every arena robot fights every other (AI vs AI), scored on damage / control / aggression
 npm run torture       # physics extremes, every pairing at 0.5 / 0.1 ms steps, a 5-minute fight, 500 build/teardowns
 npm run validate      # the gallery check (public/robots/*.bot, or files given as arguments)
 npm run stress -- tests/synth.json        # import STEP robots by rules, drive them, fight every built-in, flag blow-ups

@@ -26,7 +26,7 @@ function wheels(list: [number, number, number, number][], mass: number): { parts
 }
 
 const drive = (topSpeed: number, motorsPerSide = 1): Electrics['drive'] =>
-  ({ kv: 1000, r: 0.05, iLimit: 30, rotorJ: 2e-5, topSpeed, motorsPerSide });
+  ({ kv: 1000, r: 0.05, iLimit: 40, rotorJ: 2e-5, topSpeed, motorsPerSide });
 
 function robot(name: string, parts: Part[], W: { parts: Part[]; wheels: Wheel[] }, weapon: WeaponDef, elec: Electrics): RobotDef {
   return { format: 'botsim-robot', version: 1, name, parts: [...parts, ...W.parts], wheels: W.wheels, weapon, elec, tyreMu: 1.0, bodyMu: 0.4 };
@@ -50,13 +50,14 @@ function vert(): RobotDef {
     box('Counterweight', 'weapon', [-0.006, 0.075 - 0.11, 0.15 - 0.02], [0.006, 0.075 - 0.08, 0.15 + 0.02], 0.25, STEEL),
   ];
   return robot('Wide vert', parts, W, { type: 'spinner', pivot: piv, axis: [1, 0, 0] },
-    { cells: 6, rBatt: 0.012, drive: drive(3.5, 1), weapon: { kv: 600, r: 0.025, iLimit: 130, rotorJ: 6e-5, tipSpeed: 85 } });
+    { cells: 6, rBatt: 0.012, drive: drive(4.2, 1), weapon: { kv: 600, r: 0.025, iLimit: 130, rotorJ: 6e-5, tipSpeed: 85 } });
 }
 
 function drum(): RobotDef {
   const BLUE: Vec3 = [0.2, 0.45, 0.9];
-  const W = wheels([[-0.165, -0.12, 0.045, 0.03], [-0.165, 0.02, 0.045, 0.03], [0.165, -0.12, 0.045, 0.03], [0.165, 0.02, 0.045, 0.03]], 0.15);
-  const piv: Vec3 = [0, 0.15, 0.085];
+  // wheels taller than the body and the drum: it drives on upside down
+  const W = wheels([[-0.215, -0.13, 0.08, 0.03], [-0.215, 0.04, 0.08, 0.03], [0.215, -0.13, 0.08, 0.03], [0.215, 0.04, 0.08, 0.03]], 0.18);
+  const piv: Vec3 = [0, 0.15, 0.08];      // centred between the wheel tops and bottoms: works both ways up
   const parts = [
     box('Base plate', 'chassis', [-0.15, -0.18, 0.012], [0.15, 0.1, 0.018], 1.5, DARK),
     box('Top plate', 'chassis', [-0.15, -0.18, 0.09], [0.15, 0.1, 0.095], 0.9, BLUE),
@@ -65,11 +66,11 @@ function drum(): RobotDef {
     box('Side rail R', 'chassis', [0.185, -0.19, 0.01], [0.2, 0.2, 0.1], 0.8, BLUE),
     box('Rear wall', 'chassis', [-0.185, -0.2, 0.01], [0.185, -0.18, 0.1], 0.6, DARK),
     cylX('Drum', 'weapon', piv, 0.05, 0.3, 3.4, STEEL),
-    box('Tooth A', 'weapon', [-0.13, 0.15 - 0.012, 0.085 + 0.04], [-0.07, 0.15 + 0.012, 0.085 + 0.072], 0.2, STEEL),
-    box('Tooth B', 'weapon', [0.07, 0.15 - 0.012, 0.085 - 0.072], [0.13, 0.15 + 0.012, 0.085 - 0.04], 0.2, STEEL),
+    box('Tooth A', 'weapon', [-0.13, 0.15 - 0.012, 0.08 + 0.04], [-0.07, 0.15 + 0.012, 0.08 + 0.07], 0.2, STEEL),
+    box('Tooth B', 'weapon', [0.07, 0.15 - 0.012, 0.08 - 0.07], [0.13, 0.15 + 0.012, 0.08 - 0.04], 0.2, STEEL),
   ];
   return robot('Drum', parts, W, { type: 'drum', pivot: piv, axis: [1, 0, 0] },
-    { cells: 6, rBatt: 0.012, drive: drive(4.0, 1), weapon: { kv: 1000, r: 0.02, iLimit: 50, rotorJ: 4e-5, tipSpeed: 45 } });
+    { cells: 6, rBatt: 0.012, drive: drive(4.5, 1), weapon: { kv: 1000, r: 0.02, iLimit: 50, rotorJ: 4e-5, tipSpeed: 52 } });
 }
 
 function lifter(): RobotDef {
@@ -87,8 +88,9 @@ function lifter(): RobotDef {
     box('Forks', 'weapon', [-0.15, 0.17, 0.004], [0.15, 0.27, 0.014], 0.9, STEEL),
     box('Fork posts', 'weapon', [-0.15, 0.16, 0.004], [0.15, 0.185, 0.125], 0.6, STEEL),
   ];
-  return robot('Lifter', parts, W, { type: 'lifter', pivot: piv, axis: [1, 0, 0], rangeDeg: [0, 100] },
-    { cells: 6, rBatt: 0.012, drive: drive(3.5, 1), weapon: { kv: 1000, r: 0.05, iLimit: 60, rotorJ: 2e-5, armDps: 250 } });
+  // 150 deg of travel: enough to push itself back over when it lands upside down
+  return robot('Lifter', parts, W, { type: 'lifter', pivot: piv, axis: [1, 0, 0], rangeDeg: [0, 150] },
+    { cells: 6, rBatt: 0.012, drive: drive(4.2, 1), weapon: { kv: 1000, r: 0.05, iLimit: 80, rotorJ: 2e-5, armDps: 400 } });
 }
 
 function hammer(): RobotDef {
@@ -106,8 +108,10 @@ function hammer(): RobotDef {
     box('Hammer head', 'weapon', [-0.05, -0.4, 0.125], [0.05, -0.34, 0.185], 1.3, STEEL),
   ];
   // axis -X: + travel swings the head up from the back and over onto the front
-  return robot('Hammer', parts, W, { type: 'hammer', pivot: piv, axis: [-1, 0, 0], rangeDeg: [0, 175] },
-    { cells: 6, rBatt: 0.012, drive: drive(3.5, 1), weapon: { kv: 500, r: 0.03, iLimit: 90, rotorJ: 6e-5, armDps: 1500 } });
+  // 200 deg: the head carries on into the floor (or the opponent) instead of slamming into a stop in mid air,
+  // and 1100 deg/s is about as fast as this chassis can swing it without flipping itself over
+  return robot('Hammer', parts, W, { type: 'hammer', pivot: piv, axis: [-1, 0, 0], rangeDeg: [0, 200] },
+    { cells: 6, rBatt: 0.012, drive: drive(4.2, 1), weapon: { kv: 500, r: 0.03, iLimit: 90, rotorJ: 6e-5, armDps: 1100 } });
 }
 
 export const BUILTINS: RobotDef[] = [vert(), drum(), lifter(), hammer()];

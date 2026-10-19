@@ -25,6 +25,10 @@
     "r": 0.012,
     "iLimit": 160,
     "ratio": 4
+   },
+   "drive": {
+    "ratio": 25,
+    "iLimit": 40
    }
   }
  },
@@ -47,7 +51,25 @@
     "^Drive wheel R",
     "wheel2"
    ]
-  ]
+  ],
+  "material": [
+   [
+    "^Beater",
+    "Steel"
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 1000,
+    "r": 0.015,
+    "iLimit": 80,
+    "ratio": 2.2
+   },
+   "drive": {
+    "ratio": 25,
+    "iLimit": 40
+   }
+  }
  },
  {
   "name": "Six Pack",
@@ -93,6 +115,10 @@
   "elec": {
    "weapon": {
     "ratio": 250
+   },
+   "drive": {
+    "ratio": 25,
+    "iLimit": 40
    }
   }
  },
@@ -130,7 +156,26 @@
     "^Wheel R2",
     "wheel4"
    ]
-  ]
+  ],
+  "material": [
+   [
+    "^Hammer head",
+    "Steel"
+   ],
+   [
+    "^Hammer arm",
+    "Steel"
+   ]
+  ],
+  "elec": {
+   "drive": {
+    "ratio": 25,
+    "iLimit": 40
+   },
+   "weapon": {
+    "ratio": 60
+   }
+  }
  },
  {
   "name": "Tilt",
@@ -151,6 +196,18 @@
     "^Wheel R",
     "wheel2"
    ]
-  ]
+  ],
+  "material": [
+   [
+    "^Disc",
+    "Steel"
+   ]
+  ],
+  "elec": {
+   "drive": {
+    "ratio": 25,
+    "iLimit": 40
+   }
+  }
  }
 ]

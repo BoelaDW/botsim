@@ -32,7 +32,7 @@ save('shell_spinner', [
     ('Chassis plate', cyl(150, 6, V(0, 0, 8), V(0, 0, 1))),
     ('Shell', shell), ('Shell tooth A', teeth[0]), ('Shell tooth B', teeth[1]),
     ('Bearing hub', cyl(30, 50, V(0, 0, 14), V(0, 0, 1))),
-    ('Wheel left', wheelX(-135, 0, 30, 30, 20)), ('Wheel right', wheelX(135, 0, 30, 30, 20)),
+    ('Wheel left', wheelX(-135, 0, 42, 42, 20)), ('Wheel right', wheelX(135, 0, 42, 42, 20)),   # reach above the lid: invertible
     ('Battery', box(-60, -100, 14, 60, -50, 50)), ('Electronics', box(-50, 50, 14, 50, 100, 40)),
     ('Skid front', box(-20, 120, 0.5, 20, 140, 8)), ('Skid rear', box(-20, -140, 0.5, 20, -120, 8)),
 ])
@@ -41,14 +41,14 @@ save('shell_spinner', [
 beater = box(-60, -55, 55, 60, -45, 75).fuse(box(-60, 45, 55, 60, 55, 75))  # placeholder, replaced below
 hoops = None
 for a in (0, 90):
-    hoop = box(-60, -55, -5, 60, 55, 5).cut(box(-50, -45, -6, 50, 45, 6)).rotate(V(0, 0, 0), V(1, 0, 0), a)
+    hoop = box(-60, -70, -8, 60, 70, 8).cut(box(-48, -54, -9, 48, 54, 9)).rotate(V(0, 0, 0), V(1, 0, 0), a)
     hoops = hoop if hoops is None else hoops.fuse(hoop)
-hoops.translate(V(0, 230, 60))
+hoops.translate(V(0, 235, 75))
 save('eggbeater', [
     ('Base', box(-150, -150, 10, 150, 150, 16)), ('Lid', box(-150, -150, 90, 150, 150, 94)),
     ('Side L', box(-160, -150, 10, -150, 150, 94)), ('Side R', box(150, -150, 10, 160, 150, 94)),
-    ('Fork L', box(-100, 150, 10, -80, 260, 100)), ('Fork R', box(80, 150, 10, 100, 260, 100)),
-    ('Beater', hoops), ('Beater shaft', cyl(8, 160, V(-80, 230, 60), V(1, 0, 0))),
+    ('Fork L', box(-100, 150, 3, -80, 270, 115)), ('Fork R', box(80, 150, 3, 100, 270, 115)),
+    ('Beater', hoops), ('Beater shaft', cyl(10, 160, V(-80, 235, 75), V(1, 0, 0))),
     ('Drive wheel L', wheelX(-185, -60, 45, 45, 30)), ('Drive wheel R', wheelX(185, -60, 45, 45, 30)),
     ('Caster skid', box(-30, -150, 0, 30, -120, 10)),
     ('Battery', box(-100, -120, 16, 100, -60, 60)), ('Weapon motor', cyl(25, 60, V(-30, 100, 40), V(1, 0, 0))),
@@ -62,7 +62,7 @@ parts6 = [('Base', box(-160, -200, 12, 160, 200, 18)), ('Lid', box(-160, -200, 9
           ('Battery', box(-120, -150, 18, 120, -90, 70)), ('Gearmotor', box(-40, 60, 18, 40, 120, 80))]
 for side, x in (('L', -195), ('R', 195)):
     for name, y, dz in (('front', 140, 0), ('middle', 0, -3), ('rear', -140, 0)):
-        parts6.append((f'Wheel {name} {side}', wheelX(x, y, 40 + dz, 40, 25)))
+        parts6.append((f'Wheel {name} {side}', wheelX(x, y, 52 + dz, 52, 25)))   # taller than the lid: invertible
 save('sixwheel_flipper', parts6)
 
 # 4. sideways hammer: arm swings over the left side (hinge along Y)
@@ -80,8 +80,8 @@ save('side_hammer', [
 def camber(x, y, z, r, w, s):
     c = wheelX(x, y, z, r, w); c.rotate(V(x, y, z), V(0, 1, 0), 10 * s); return c
 vbot = [('Base', box(-120, -150, 12, 120, 150, 18)), ('Lid', box(-120, -150, 90, 120, 150, 94)),
-        ('Disc', cyl(120, 12, V(-6, 190, 160), V(1, 0, 0))), ('Disc tooth', box(-6, 300, 170, 6, 330, 190)),
-        ('Weapon upright L', box(-30, 100, 18, -15, 230, 170)), ('Weapon upright R', box(15, 100, 18, 30, 230, 170)),
+        ('Disc', cyl(120, 12, V(-6, 190, 180), V(1, 0, 0))), ('Disc tooth', box(-6, 300, 190, 6, 330, 210)),
+        ('Weapon upright L', box(-35, 100, 18, -20, 230, 190)), ('Weapon upright R', box(20, 100, 18, 35, 230, 190)),
         ('Wheel L', camber(-150, 60, 45, 45, 25, 1)), ('Wheel R', camber(150, 60, 45, 45, 25, -1)),
         ('Skid', box(-40, 100, 3, 40, 150, 12)), ('Rear skid', box(-40, -150, 3, 40, -120, 12))]
 save('camber_vert', vbot, stl='single')

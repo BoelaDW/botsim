@@ -232,6 +232,8 @@ export function robotXml(def: RobotDef, D: Derived, prefix: string, xy: [number,
   act.push(`<motor name="${prefix}weapon" joint="${prefix}weapon" gear="${D.weaponRatio.toFixed(6)}" ctrllimited="false"/>`);
   // a robot's own weapon never collides with its own wheels (drums between wheels etc.)
   def.wheels.forEach((_, k) => excl.push(`<exclude body1="${prefix}weapon" body2="${prefix}wheel${k}"/>`));
+  // nor do its wheels touch each other (close-set or overlapping wheels would jam)
+  def.wheels.forEach((_, a) => def.wheels.forEach((__, b) => b > a && excl.push(`<exclude body1="${prefix}wheel${a}" body2="${prefix}wheel${b}"/>`)));
   return { assets, body, eq, act, excl };
 }
 

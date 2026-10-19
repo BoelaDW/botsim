@@ -338,6 +338,7 @@ export class Workshop {
     this.applyTransform();
     this.fileName = '';
     $<HTMLInputElement>('#ws-name', this.root).value = '';
+    $<HTMLTextAreaElement>('#ws-about', this.root).value = '';
     $<HTMLInputElement>('#ws-file', this.root).value = '';
     $('#ws-report', this.root).innerHTML = '';
     $('#ws-status', this.root).textContent = '';
@@ -350,6 +351,9 @@ export class Workshop {
     if (!this.parts.length) { out.innerHTML = '<div class="warn">Load a CAD file first.</div>'; return null; }
     try {
       const res = buildDef(this.parts, this.settings());
+      const author = $<HTMLInputElement>('#ws-author', this.root).value.trim(), about = $<HTMLTextAreaElement>('#ws-about', this.root).value.trim();
+      if (author) res.def.author = author;
+      if (about) res.def.description = about;
       this.lastResult = res;
       this.showOverlay(res.def);
       this.updateCalc();
@@ -464,7 +468,7 @@ export class Workshop {
     $('#ws-test', R).addEventListener('click', async () => { const r = await buildBusy('Building the robot'); if (r) this.onTest(r.def); });
     $('#ws-save', R).addEventListener('click', async () => {
       const r = await buildBusy('Building the robot file');
-      if (r) download(saveBot(r.def), (r.def.name.replace(/[^\w-]+/g, '_') || 'robot') + '.bot');
+      if (r) download(await saveBot(r.def), (r.def.name.replace(/[^\w-]+/g, '_') || 'robot') + '.bot');
     });
     $('#ws-remove', R).addEventListener('click', () => {
       if (!this.parts.length) return;
@@ -473,6 +477,9 @@ export class Workshop {
       this.clear();
       this.onRemove(name);
     });
+    const author = $<HTMLInputElement>('#ws-author', R);      // remember the builder's name on this browser
+    try { author.value = localStorage.getItem('botsim.author') ?? ''; } catch { /* storage blocked */ }
+    author.addEventListener('change', () => { try { localStorage.setItem('botsim.author', author.value.trim()); } catch { /* ignore */ } });
     this.weaponDefaults('spinner');
   }
 }

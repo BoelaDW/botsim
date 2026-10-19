@@ -63,6 +63,8 @@ export interface RobotDef {
   format: 'botsim-robot';
   version: 1;
   name: string;
+  author?: string;
+  description?: string;
   parts: Part[];
   wheels: Wheel[];
   weapon: WeaponDef;

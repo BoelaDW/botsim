@@ -5,9 +5,10 @@ A combat robot simulator that runs in the browser: **MuJoCo** physics (the offic
 
 **Play it online: https://boeladw.github.io/botsim/** (no install; Chrome, Firefox or Edge on a PC).
 
-Two pages:
+Three pages:
 
-- **Arena** — 1v1 featherweight fights, test drives, AI opponent, gamepads + keyboard.
+- **Arena** — 1v1 featherweight fights, test drives, AI opponent, gamepads, keyboard or touch (phones / tablets).
+- **Gallery** — robots other builders have shared: fight them, or copy a link that opens the arena with one loaded.
 - **Workshop** — load a STEP / IGES / STL, orient it, tag parts (chassis / weapon / wheel 1–6 / ignore),
   set materials, motors and battery, then test it in the arena or save a `.bot` file to share.
 
@@ -58,6 +59,21 @@ loaded robots (built-ins stay). Anything not modelled (wires, electronics) can b
 as ballast at the chassis centre of mass. Only parts on the outside of the robot get collision shapes by default
 (convex hull per part); toggle with Collide / No collide.
 
+## Phones and tablets
+
+The Arena works on phones: on-screen sticks appear on the first touch (left = drive, right = steer, or one stick in
+the menu), plus WEAPON and FLIP buttons. Bluetooth gamepads work too. Play sideways; if the phone can't keep up,
+pick the 0.5 ms physics step. The Workshop runs on a phone but is meant for a PC.
+
+## Robot gallery
+
+The gallery is the `.bot` files in [`public/robots/`](public/robots/). To add one, upload it there on GitHub
+(**Add file → Upload files**); that opens a pull request, and the **Check gallery robots** workflow loads it, checks
+the weight limit and runs it in the arena. Merge it and the site redeploys with the robot listed.
+`npm run validate` runs the same check locally.
+
+`.bot` files are gzipped with quantised meshes (0.01 mm), about 12× smaller than the first format, which still loads.
+
 ## Tests
 
 ```sh
@@ -76,6 +92,10 @@ npm run test:import -- testfiles/your_robot.step   # needs your own STEP; tag ru
 | `src/render.ts` | Three.js arena |
 | `src/importer.ts` | CAD parts + tags → robot definition (wheel / weapon axis detection, mass) |
 | `src/workshop.ts` | Workshop page |
+| `src/gallery.ts` | Gallery page and share links (`?bot=file.bot`) |
+| `src/touch.ts` | on-screen touch controls |
+| `src/robotfile.ts` | `.bot` file read / write |
+| `scripts/robot-index.mjs` | builds the gallery list at build time |
 | `src/massprops.ts` | mesh volume / inertia, convex hulls |
 | `public/occt/step-worker.js` | reads STEP files in a background thread |
 

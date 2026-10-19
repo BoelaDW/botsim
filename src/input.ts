@@ -1,5 +1,6 @@
 // Drivers: keyboard + gamepad humans, and the desktop sim's AI.
 import { ARM_HOLD, ARM_RETURN, type Bot } from './sim';
+import { setWeaponLit, touch } from './touch';
 
 export interface Cmd { thr: number; steer: number; weapon: number }
 export interface View { qpos: Float64Array; qvel: Float64Array; xpos: Float64Array; xmat: Float64Array }
@@ -56,10 +57,15 @@ export class Human implements Driver {
     let thr = +k('fwd') - +k('back');
     let steer = (+k('right') - +k('left')) * 0.7;
     let half = k('half');
-    const held = k('weapon');
+    let held = k('weapon');
+    if (this.player === 1 && touch.active) {          // on-screen sticks drive player 1
+      if (touch.thr || touch.steer) { thr = touch.thr; steer = touch.steer; }
+      for (; touch.weaponTaps > 0; touch.weaponTaps--) this.weaponOn = !this.weaponOn;
+      held ||= touch.weaponHeld;
+    }
     let analog: number | null = null;
     const pad = gamepads()[this.padSlot];
-    this.label = this.useKeys ? 'keys' : 'waiting for pad';
+    this.label = this.player === 1 && touch.active ? 'touch' : this.useKeys ? 'keys' : 'waiting for pad';
     if (pad) {
       this.label = 'pad: ' + pad.id.slice(0, 28) + (pad.mapping === 'standard' ? '' : ' (non-standard mapping!)');
       const dz = (v: number) => (Math.abs(v) < 0.08 ? 0 : v);
@@ -71,6 +77,7 @@ export class Human implements Driver {
     }
     if (half) { thr *= 0.5; steer *= 0.5; }
     let weapon: number;
+    if (this.player === 1) setWeaponLit(bot.spinner && this.weaponOn);
     if (bot.spinner) weapon = analog ?? (this.weaponOn ? 1 : 0);
     else weapon = held || (analog !== null && analog > 0.3) ? ARM_HOLD : ARM_RETURN;
     return { thr, steer, weapon };

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#171a1f" />
   <title>BotSim (proof of concept)</title>
   <link rel="stylesheet" href="./src/style.css" />
 </head>
@@ -11,6 +12,7 @@
     <b class="logo">BotSim</b><span class="poc">proof of concept</span>
     <nav>
       <button class="tab active" data-tab="arena">Arena</button>
+      <button class="tab" data-tab="gallery">Gallery</button>
       <button class="tab" data-tab="workshop">Workshop</button>
     </nav>
     <span id="status">Loading physics…</span>
@@ -40,6 +42,9 @@
             <option value="0.0001">0.1 ms (slower, more accurate)</option>
           </select>
         </label>
+        <label class="touch-only">Touch controls
+          <select id="touch-mode"><option value="two">two sticks (left drive, right steer)</option><option value="one">one stick (drive + steer)</option></select>
+        </label>
         <button id="start" class="primary">Start match (Enter)</button>
         <label class="file">Load a .bot file <input id="bot-file" type="file" accept=".bot,.json" multiple /></label>
         <details>
@@ -64,6 +69,30 @@
       <div id="perf"></div>
       <div id="pads"></div>
       <div id="paused" hidden>PAUSED</div>
+    </section>
+
+    <!-- GALLERY -->
+    <section id="gallery" class="page">
+      <div class="gal-wrap">
+        <div class="gal-head">
+          <h2>Robot gallery</h2>
+          <input id="gal-search" placeholder="search name, builder, description" />
+          <select id="gal-weapon"><option value="">all weapons</option><option value="spinner">spinners</option>
+            <option value="drum">drums</option><option value="lifter">lifters</option><option value="hammer">hammers</option></select>
+        </div>
+        <div id="gal-list" class="gal-list"><div class="hint">Loading the gallery…</div></div>
+        <details class="panel gal-share" open>
+          <summary><b>Share your robot</b></summary>
+          <ol>
+            <li>Build it in the <b>Workshop</b>, fill in your name and a description, and press <b>Save .bot file</b>.</li>
+            <li><a id="gal-upload" target="_blank" rel="noopener">Upload it here</a> (needs a free GitHub account). GitHub turns the upload
+              into a pull request; an automatic check loads it, weighs it and runs it in the arena.</li>
+            <li>Once it's accepted it shows up here for everyone within a few minutes.</li>
+          </ol>
+          <p class="hint">Just want to fight a friend? Send them the .bot file: <b>Arena → Load a .bot file</b>.
+            Every gallery robot also has a link that opens the arena with it loaded.</p>
+        </details>
+      </div>
     </section>
 
     <!-- WORKSHOP -->
@@ -174,7 +203,11 @@
         </div>
 
         <h3>7. Build</h3>
-        <label>Robot name <input id="ws-name" /></label>
+        <div class="grid2">
+          <label>Robot name <input id="ws-name" /></label>
+          <label>Builder / team <input id="ws-author" placeholder="shown in the gallery" /></label>
+        </div>
+        <label>Description <textarea id="ws-about" rows="2" placeholder="weapon, drive, anything people should know (optional)"></textarea></label>
         <div class="inline">
           <button id="ws-check">Check</button>
           <button id="ws-test" class="primary">Test in arena</button>

@@ -1,8 +1,9 @@
 // Headless check of the physics core: every built-in robot drives, spins up and stays sane.
 import { BUILTINS } from '../src/builtin';
-import { derive, TIMESTEP } from '../src/build';
+import { derive, TIMESTEP as TS0 } from '../src/build';
 import { getMujoco, Sim } from '../src/sim';
 
+const TIMESTEP = +(process.env.TS ?? TS0);   // TS=0.0005 npm test checks the faster step
 const mj = await getMujoco();
 for (const def of BUILTINS) {
   const D = derive(def);

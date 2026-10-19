@@ -1,6 +1,8 @@
 // App shell: tabs, match setup, the game loop and the HUD.
 import { BUILTINS } from './builtin';
 import { busy, done, paint, readFile } from './busy';
+import { fetchBot, Gallery } from './gallery';
+import { setupTouch, touch } from './touch';
 import { AI, clearPresses, gamepads, Human, padEdge, takePress, type Driver } from './input';
 import { ArenaView } from './render';
 import { loadBot } from './robotfile';
@@ -18,7 +20,7 @@ let sim: Sim | null = null;
 let drivers: Driver[] = [];
 let defs: RobotDef[] = [];
 let paused = false;
-let page: 'arena' | 'workshop' = 'arena';
+let page: 'arena' | 'gallery' | 'workshop' = 'arena';
 
 // ---------------------------------------------------------------- setup panel
 function fillRobotLists(p1?: number, p2?: number) {
@@ -65,7 +67,7 @@ async function startMatch() {
   paused = false;
   showSetup(false);
   clearPresses();
-  perf.simT = 0; perf.wallT = 0;
+  perf.simT = 0; perf.wallT = 0; perf.slow = 0;
   status(`${defs.map((d) => d.name).join(' vs ')} — scene built in ${sim.compileMs.toFixed(0)} ms`);
 }
 
@@ -75,10 +77,10 @@ $<HTMLInputElement>('bot-file').addEventListener('change', async (e) => {
   if (!files) return;
   for (const f of files) {
     try {
-      const text = (await readFile(f, 'text', `Loading ${f.name}`)) as string;
+      const buf = (await readFile(f, 'buffer', `Loading ${f.name}`)) as ArrayBuffer;
       busy(`Unpacking ${f.name}`);
       await paint();
-      robots.push(loadBot(text));
+      robots.push(await loadBot(buf));
       fillRobotLists(robots.length - 1);
       status(`Loaded ${f.name}`);
     } catch (err) {
@@ -111,15 +113,28 @@ function setPage(p: typeof page) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', (t as HTMLElement).dataset.tab === p));
   document.querySelectorAll('.page').forEach((s) => s.classList.toggle('active', s.id === p));
   workshop.active = p === 'workshop';
+  if (p === 'gallery') gallery.open();
   clearPresses();
   if (p === 'workshop') workshop.resize(); else view.resize();
 }
 
-const workshop = new Workshop($('workshop'), (def) => {
+/** Add (or replace a same-named) robot and pick it for player 1. */
+function addRobot(def: RobotDef): number {
   const existing = robots.findIndex((r) => r.name === def.name && !BUILTINS.includes(r));
   if (existing >= 0) robots[existing] = def; else robots.push(def);
   const i = existing >= 0 ? existing : robots.length - 1;
   fillRobotLists(i);
+  return i;
+}
+
+const gallery = new Gallery($('gallery'), (def, fight) => {
+  addRobot(def);
+  status(`${def.name} added to the robot lists`);
+  if (fight) { setPage('arena'); startMatch(); }
+});
+
+const workshop = new Workshop($('workshop'), (def) => {
+  addRobot(def);
   setPage('arena');
   startMatch();
 }, (name) => {
@@ -128,7 +143,7 @@ const workshop = new Workshop($('workshop'), (def) => {
 });
 
 // ---------------------------------------------------------------- loop
-const perf = { simT: 0, wallT: 0, steps: 0, stepMs: 0, frames: 0, fpsT: performance.now(), fps: 0, hudT: 0 };
+const perf = { slow: 0, simT: 0, wallT: 0, steps: 0, stepMs: 0, frames: 0, fpsT: performance.now(), fps: 0, hudT: 0 };
 let last = performance.now();
 
 function globalKeys() {
@@ -193,6 +208,11 @@ function frame(now: number) {
       ? `${perf.fps.toFixed(0)} fps   sim speed ${rt.toFixed(0)}% of real time\n` +
         `physics ${(perf.stepMs / perf.frames).toFixed(1)} ms/frame, ${(perf.steps / span / 1000).toFixed(1)}k steps/s, ${sim.d.ncon} contacts`
       : `${perf.fps.toFixed(0)} fps`;
+    if (sim && !paused) {
+      perf.slow = rt < 80 ? perf.slow + 1 : 0;
+      if (perf.slow === 6 && sim.m.opt.timestep < 0.0004)
+        status(`This device runs the physics at ${rt.toFixed(0)}% speed: pick "Physics step 0.5 ms" in the menu for smoother play`);
+    }
     perf.frames = 0; perf.steps = 0; perf.stepMs = 0; perf.fpsT = now; perf.simT = 0; perf.wallT = 0;
     hud();
     const pads = gamepads();
@@ -216,12 +236,31 @@ function hud() {
   }).join('');
 }
 
+setupTouch($('arena'), {
+  menu: () => showSetup($('setup').classList.contains('hidden')),
+  reset: () => startMatch(),
+  camera: () => { if (sim) view.follow = (view.follow + 1) % (sim.bots.length + 1); },
+  flip: () => flip(0),
+  pause: () => { paused = !paused; },
+});
+$<HTMLSelectElement>('touch-mode').addEventListener('change', (e) => { touch.oneStick = (e.target as HTMLSelectElement).value === 'one'; document.body.classList.toggle('one-stick', touch.oneStick); });
+
 // ---------------------------------------------------------------- boot
 fillRobotLists(0, 1);
 requestAnimationFrame(frame);
-getMujoco().then((m) => {
+getMujoco().then(async (m) => {
   mj = m;
   status('Physics ready. Pick robots and press Start (or Enter).');
+  const linked = new URLSearchParams(location.search).get('bot');     // share links: ?bot=file.bot
+  if (linked) {
+    try {
+      const def = await fetchBot(linked);
+      addRobot(def);
+      status(`${def.name} loaded from the gallery link. Pick an opponent and press Start.`);
+    } catch (e) {
+      status(`Gallery link: ${e instanceof Error ? e.message : e}`);
+    }
+  }
 }).catch((e) => {
   status('Could not load MuJoCo WebAssembly: ' + e);
   console.error(e);

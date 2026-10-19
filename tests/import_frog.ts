@@ -46,8 +46,15 @@ console.log(`6 s in ${ms.toFixed(0)} ms (${(6000 / ms * 100).toFixed(0)}% realti
   `${(bot.energy(sim.d.qvel) / 1000).toFixed(1)} kJ; up ${bot.zz(sim.d.xmat).toFixed(2)}, z ${sim.d.xpos[b + 2].toFixed(3)}, y ${sim.d.xpos[b + 1].toFixed(2)}, speed ${bot.forwardSpeed(sim.d.xmat, sim.d.qvel).toFixed(2)} m/s`);
 
 // .bot round trip
-
-const text = await saveBot(def).text();
-const back = loadBot(text);
-const same = back.parts.length === def.parts.length && back.parts.every((p, i) => (p.mesh?.pos.length ?? 0) === (def.parts[i].mesh?.pos.length ?? 0) && p.mass === def.parts[i].mass);
-console.log(`.bot file ${(text.length / 1e6).toFixed(1)} MB, round trip ${same ? 'OK' : 'MISMATCH'}`);
+const blob = await saveBot(def);
+const buf = await blob.arrayBuffer();
+if (process.argv[3]) (await import('node:fs')).writeFileSync(process.argv[3], new Uint8Array(buf));
+const back = await loadBot(buf);
+const maxErr = Math.max(...back.parts.map((p, i) => p.mesh ? p.mesh.pos.reduce((m, v, k) => Math.max(m, Math.abs(v - def.parts[i].mesh!.pos[k])), 0) : 0));
+const same = back.parts.length === def.parts.length && back.parts.every((p, i) => (p.mesh?.pos.length ?? 0) === (def.parts[i].mesh?.pos.length ?? 0) &&
+  (p.mesh?.idx.every((x, k) => x === def.parts[i].mesh!.idx[k]) ?? true) && p.mass === def.parts[i].mass);
+console.log(`.bot file ${(buf.byteLength / 1e6).toFixed(2)} MB, round trip ${same && maxErr < 1e-5 ? 'OK' : 'MISMATCH'} (max vertex error ${(maxErr * 1e3).toFixed(4)} mm)`);
+if (process.argv[4]) {   // an old-format file must still load
+  const old = await loadBot((await import('node:fs')).readFileSync(process.argv[4]).buffer as ArrayBuffer);
+  console.log(`old-format file: ${old.name}, ${old.parts.length} parts`);
+}

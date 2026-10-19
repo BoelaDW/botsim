@@ -1,0 +1,25 @@
+# Checks robots submitted to the gallery: they load, make weight and run in the arena.
+name: Check gallery robots
+
+on:
+  pull_request:
+    paths: ['public/robots/**']
+  push:
+    branches: [main]
+    paths: ['public/robots/**']
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run validate
+      - run: node scripts/robot-index.mjs

@@ -25,6 +25,7 @@ interface Rule {
   material?: [string, string][];        // [regex, material]
   fill?: [string, number][];            // [regex, fill 0..1]
   collide?: [string, boolean][];        // [regex, collide]
+  color?: [string, [number, number, number]][];   // [regex, rgb 0..1]
   pivot?: string;                       // regex: parts whose bbox centre is the arm pivot
   range?: [number, number];
   elec?: { volts?: number; weapon?: Record<string, number>; drive?: Record<string, number> };
@@ -73,6 +74,7 @@ function importRobot(R: Rule): { def: RobotDef; parts: ImportPart[] } {
   const parts = initParts(raw);
   for (const [re, tag] of R.tags) { const rx = new RegExp(re, 'i'); parts.forEach((p) => rx.test(p.name) && (p.tag = tag)); }
   for (const [re, m] of R.material ?? []) { const rx = new RegExp(re, 'i'); parts.forEach((p) => rx.test(p.name) && (p.material = m)); }
+  for (const [re, c] of R.color ?? []) { const rx = new RegExp(re, 'i'); parts.forEach((p) => rx.test(p.name) && (p.color = c)); }
   for (const [re, c] of R.collide ?? []) { const rx = new RegExp(re, 'i'); parts.forEach((p) => rx.test(p.name) && (p.collide = c)); }
   for (const [re, f] of R.fill ?? []) { const rx = new RegExp(re, 'i'); parts.forEach((p) => rx.test(p.name) && (p.fill = f)); }
   let rot = [1, 0, 0, 0, 1, 0, 0, 0, 1];

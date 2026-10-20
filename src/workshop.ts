@@ -318,6 +318,7 @@ export class Workshop {
     const elec = defaultElectrics(type, num('ws-target') || FEATHERWEIGHT_KG);
     elec.cells = num('ws-cells');
     elec.volts = num('ws-volts') || elec.cells * V_CELL;
+    if ($<HTMLInputElement>('#ws-split', this.root).checked) elec.driveVolts = num('ws-dvolts') || num('ws-dcells') * V_CELL;
     const ratio = (id: string) => {
       const r = parseRatio($<HTMLInputElement>('#' + id, this.root).value);
       if (!(r > 0)) throw new Error(`"${$<HTMLInputElement>('#' + id, this.root).value}" is not a reduction: use a number like 3, 36/12 or 5.2*36/16`);
@@ -354,21 +355,23 @@ export class Workshop {
   updateCalc() {
     const R = this.root, num = (id: string) => parseFloat($<HTMLInputElement>('#' + id, R).value);
     const volts = num('ws-volts');
+    const split = $<HTMLInputElement>('#ws-split', R).checked;
+    const dvolts = split ? num('ws-dvolts') : volts;
     const spin = ['spinner', 'drum'].includes($<HTMLSelectElement>('#ws-wtype', R).value);
     const rpm = (radS: number) => Math.round((radS * 60) / (2 * Math.PI)).toLocaleString();
     const D = this.lastResult ? derivedOf(this.lastResult) : null;
-    const line = (kvId: string, ratioId: string, out: (w: number) => string) => {
-      const ms = motorSpeed(num(kvId), volts), r = parseRatio($<HTMLInputElement>('#' + ratioId, R).value);
+    const line = (kvId: string, ratioId: string, out: (w: number) => string, v = volts) => {
+      const ms = motorSpeed(num(kvId), v), r = parseRatio($<HTMLInputElement>('#' + ratioId, R).value);
       if (!(ms > 0)) return '';
       if (!(r > 0)) return '<span class="warn">reduction: enter a number like 3, 36/12 or 5.2*36/16</span>';
-      return `Motor <b>${rpm(ms)}</b> rpm at ${volts.toFixed(1)} V → <b>${rpm(ms / r)}</b> rpm no-load${out(ms / r)}`;
+      return `Motor <b>${rpm(ms)}</b> rpm at ${v.toFixed(1)} V → <b>${rpm(ms / r)}</b> rpm no-load${out(ms / r)}`;
     };
     $('#ws-wcalc', R).innerHTML = line('ws-wkv', 'ws-wratio', (w) =>
       spin ? (D ? `, tip <b>${(w * D.tipRadius).toFixed(0)} m/s</b> at ${(D.tipRadius * 1000).toFixed(0)} mm radius, <b>${(0.5 * D.weaponJ * w * w / 1000).toFixed(1)} kJ</b>`
         : ' (press Check to get tip speed and energy)')
         : ` = <b>${(w * 180 / Math.PI).toFixed(0)}°/s</b>`);
     $('#ws-dcalc', R).innerHTML = line('ws-dkv', 'ws-dratio', (w) =>
-      D && D.wheelR ? ` → <b>${(w * D.wheelR).toFixed(1)} m/s</b> (${(w * D.wheelR * 3.6).toFixed(0)} km/h) on Ø${(D.wheelR * 2000).toFixed(0)} mm wheels` : ' (press Check to get the top speed)');
+      D && D.wheelR ? ` → <b>${(w * D.wheelR).toFixed(1)} m/s</b> (${(w * D.wheelR * 3.6).toFixed(0)} km/h) on Ø${(D.wheelR * 2000).toFixed(0)} mm wheels` : ' (press Check to get the top speed)', dvolts);
   }
 
   /** Back to an empty workshop. */
@@ -521,7 +524,16 @@ export class Workshop {
       if (c > 0) $<HTMLInputElement>('#ws-volts', R).value = (c * V_CELL).toFixed(1);
       this.updateCalc();
     });
-    for (const id of ['ws-volts', 'ws-wkv', 'ws-wratio', 'ws-dkv', 'ws-dratio']) $('#' + id, R).addEventListener('input', () => this.updateCalc());
+    for (const id of ['ws-volts', 'ws-wkv', 'ws-wratio', 'ws-dkv', 'ws-dratio', 'ws-dvolts']) $('#' + id, R).addEventListener('input', () => this.updateCalc());
+    const split = $<HTMLInputElement>('#ws-split', R);
+    const showSplit = () => { R.querySelectorAll<HTMLElement>('.drive-batt').forEach((el) => (el.hidden = !split.checked)); this.updateCalc(); };
+    split.addEventListener('change', showSplit);
+    showSplit();
+    $('#ws-dcells', R).addEventListener('input', () => {
+      const c = parseFloat($<HTMLInputElement>('#ws-dcells', R).value);
+      if (c > 0) $<HTMLInputElement>('#ws-dvolts', R).value = (c * V_CELL).toFixed(1);
+      this.updateCalc();
+    });
     const buildBusy = async (what: string) => { busy(what); await paint(); try { return this.build(); } finally { done(); } };
     $('#ws-check', R).addEventListener('click', () => buildBusy('Checking the robot'));
     $('#ws-test', R).addEventListener('click', async () => { const r = await buildBusy('Building the robot'); if (r) this.onTest(r.def); });

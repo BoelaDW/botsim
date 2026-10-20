@@ -32,7 +32,8 @@ export class Bot {
   drvV: Record<'l' | 'r', number> = { l: -1, r: -1 };
   act: Record<string, number> = {};
   bodyIds: Record<string, number> = {};
-  vBus: number;
+  vBus: number;                 // weapon (main) battery under load
+  vDriveBus: number;            // drive battery under load (the same as vBus unless it's separate)
   cmd = { thr: 0, steer: 0, weapon: 0 };
   private inv = false;
 
@@ -53,6 +54,7 @@ export class Bot {
     for (const b of D.bodies) this.bodyIds[b] = id('mjOBJ_BODY', b);
     this.chassis = this.bodyIds.chassis; this.weaponBody = this.bodyIds.weapon;
     this.vBus = D.vBatt;
+    this.vDriveBus = D.vDrive;
   }
 
   get kind() { return this.def.weapon.type; }
@@ -84,22 +86,25 @@ export class Bot {
     if (this.upsideDown(xmat)) thr = -thr;
     const E = this.def.elec, D = this.D;
     const cmds = { l: Math.max(-1, Math.min(1, thr + steer)), r: Math.max(-1, Math.min(1, thr - steer)) };
-    let iTotal = 0;
+    let iDrive = 0;
     // wheel joints spin about +X: + joint speed rolls the robot backwards
     for (const s of ['l', 'r'] as const) {
       const w = D.driven[s];
       if (w < 0) continue;
       const om = -qvel[this.drvV[s]] * D.driveRatio[w];
-      const t = this.drive[s].torque(cmds[s], om, this.vBus) * E.drive.motorsPerSide;
+      const t = this.drive[s].torque(cmds[s], om, this.vDriveBus) * E.drive.motorsPerSide;
       ctrl[this.act['drive_' + s]] = -t;
-      iTotal += Math.abs(this.drive[s].current) * E.drive.motorsPerSide;
+      iDrive += Math.abs(this.drive[s].current) * E.drive.motorsPerSide;
     }
     const wv = qvel[this.wV];
     const tw = this.weapon.torque(weapon, wv * D.weaponRatio, this.vBus);
     const drag = D.weaponDrag * wv * Math.abs(wv);
     ctrl[this.act.weapon] = tw - drag / D.weaponRatio;
-    iTotal += Math.abs(this.weapon.current);
-    this.vBus = D.vBatt - E.rBatt * iTotal;
+    const iWeapon = Math.abs(this.weapon.current);
+    if (D.splitBattery) {     // two packs, each sagging under its own load
+      this.vBus = D.vBatt - E.rBatt * iWeapon;
+      this.vDriveBus = D.vDrive - E.rBatt * iDrive;
+    } else this.vBus = this.vDriveBus = D.vBatt - E.rBatt * (iDrive + iWeapon);
   }
 
   /** Put the robot back on its wheels where it is (the desktop sim's "flip" key). */

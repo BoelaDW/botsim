@@ -91,16 +91,19 @@ export interface Derived {
   minZ: number;                       // lowest colliding point (robot frame)
   reach: number;                      // furthest colliding point from the chassis origin, sideways (for spawning)
   vBatt: number;
+  vDrive: number;                     // drive battery (= vBatt unless the robot has a separate one)
+  splitBattery: boolean;
 }
 
 export function derive(def: RobotDef): Derived {
   const vBatt = def.elec.volts ?? def.elec.cells * V_CELL;
+  const vDrive = def.elec.driveVolts ?? vBatt;
   const origin: Record<string, Vec3> = { chassis: [0, 0, 0], weapon: def.weapon.pivot };
   def.wheels.forEach((w, i) => (origin['wheel' + i] = w.center));
   const bodies = Object.keys(origin);
   const midX = def.wheels.reduce((s, w) => s + w.center[0], 0) / Math.max(1, def.wheels.length);
   const wheelSide = def.wheels.map((w) => (w.center[0] < midX ? 'l' : 'r') as 'l' | 'r');
-  const ms = motorSpeed(def.elec.drive.kv, vBatt);
+  const ms = motorSpeed(def.elec.drive.kv, vDrive);
   // the reduction applies to the biggest wheel; other wheels on a side are coupled at the same surface speed
   const maxR = Math.max(0.01, ...def.wheels.map((w) => w.radius));
   const topSpeed = def.elec.drive.ratio ? (ms / def.elec.drive.ratio) * maxR : def.elec.drive.topSpeed ?? 3.5;
@@ -143,7 +146,7 @@ export function derive(def: RobotDef): Derived {
   let reach = 0.2;
   for (const p of def.parts) if (p.collide) for (const q of partPoints(p)) reach = Math.max(reach, Math.hypot(q[0], q[1]));
   for (const w of def.wheels) reach = Math.max(reach, Math.hypot(w.center[0], w.center[1]) + w.radius);
-  return { bodies, origin, wheelSide, driveRatio, driven, weaponRatio, tipRadius, weaponJ, topSpeed, noLoadTip, noLoadArmDps, weaponDrag, sizeScale: Math.min(1, (mass / 13.6) ** (5 / 3)), mass, massBy, minZ, reach, vBatt };
+  return { bodies, origin, wheelSide, driveRatio, driven, weaponRatio, tipRadius, weaponJ, topSpeed, noLoadTip, noLoadArmDps, weaponDrag, sizeScale: Math.min(1, (mass / 13.6) ** (5 / 3)), mass, massBy, minZ, reach, vBatt, vDrive, splitBattery: def.elec.driveVolts !== undefined };
 }
 
 function quatZ(deg: number): string {

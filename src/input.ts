@@ -47,6 +47,23 @@ const KEYSETS = {
   2: { fwd: ['ArrowUp'], back: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], weapon: ['Enter', 'NumpadEnter'], half: ['ShiftRight'] },
 };
 
+/** How a human's sticks / keys map to the motors (Arena menu, remembered per browser). */
+export interface Feel {
+  steer: number;          // steering sensitivity: full stick = this much turn (0.2..1)
+  steerExpo: number;      // 0 = linear, 1 = very soft around the centre
+  thrExpo: number;
+}
+const FEEL_DEFAULT: Feel = { steer: 0.75, steerExpo: 0.3, thrExpo: 0 };
+export const feel: Record<1 | 2, Feel> = { 1: { ...FEEL_DEFAULT }, 2: { ...FEEL_DEFAULT } };
+try {
+  const saved = JSON.parse(localStorage.getItem('botsim.feel') ?? 'null');
+  for (const p of [1, 2] as const) if (saved?.[p]) Object.assign(feel[p], saved[p]);
+} catch { /* no storage (or tests): defaults */ }
+export function saveFeel() { try { localStorage.setItem('botsim.feel', JSON.stringify(feel)); } catch { /* ignore */ } }
+export const resetFeel = (p: 1 | 2) => Object.assign(feel[p], FEEL_DEFAULT);
+/** expo curve: small stick movements do less, full stick still does full */
+const curve = (x: number, e: number) => (1 - e) * x + e * x * x * x;
+
 export interface Driver { label: string; controls(bot: Bot, other: Bot | null, v: View, dt: number): Cmd }
 
 export class Human implements Driver {
@@ -59,7 +76,7 @@ export class Human implements Driver {
     const k = (n: keyof typeof ks) => this.useKeys && ks[n].some((c) => keys.has(c));
     if (this.useKeys && ks.weapon.some((c) => takePress(c))) this.weaponOn = !this.weaponOn;
     let thr = +k('fwd') - +k('back');
-    let steer = (+k('right') - +k('left')) * 0.7;
+    let steer = +k('right') - +k('left');
     let half = k('half');
     let held = k('weapon');
     if (this.player === 1 && touch.active) {          // on-screen sticks drive player 1
@@ -74,11 +91,14 @@ export class Human implements Driver {
       this.label = 'pad: ' + pad.id.slice(0, 28) + (pad.mapping === 'standard' ? '' : ' (non-standard mapping!)');
       const dz = (v: number) => (!Number.isFinite(v) || Math.abs(v) < 0.08 ? 0 : Math.max(-1, Math.min(1, v)));
       if (dz(pad.axes[1] ?? 0)) thr = -dz(pad.axes[1]);
-      if (dz(pad.axes[2] ?? 0)) steer = dz(pad.axes[2]) * 0.8;
+      if (dz(pad.axes[2] ?? 0)) steer = dz(pad.axes[2]);
       const rt = pad.buttons[7]?.value ?? 0;      // right trigger
       if (rt > 0.03) analog = Math.min(1, rt);
       half ||= !!pad.buttons[4]?.pressed;         // left bumper
     }
+    const f = feel[this.player];
+    steer = curve(steer, f.steerExpo) * f.steer;
+    thr = curve(thr, f.thrExpo);
     if (half) { thr *= 0.5; steer *= 0.5; }
     let weapon: number;
     if (this.player === 1) setWeaponLit(bot.spinner && this.weaponOn);

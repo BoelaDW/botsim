@@ -1,10 +1,10 @@
 // App shell: tabs, match setup, the game loop and the HUD.
 import { BUILTINS } from './builtin';
-import { MOCKUPS } from './config';
+import { EXAMPLES } from './config';
 import { busy, done, paint, readFile } from './busy';
 import { fetchBot, Gallery } from './gallery';
 import { setupTouch, touch } from './touch';
-import { AI, clearPresses, gamepads, Human, padEdge, takePress, type Driver } from './input';
+import { AI, clearPresses, feel, gamepads, Human, padEdge, resetFeel, saveFeel, takePress, type Driver } from './input';
 import { ArenaView } from './render';
 import { loadBot } from './robotfile';
 import { getMujoco, Sim } from './sim';
@@ -250,7 +250,7 @@ function hud() {
     const amps = Math.abs(b.drive.l.current) + Math.abs(b.drive.r.current) + Math.abs(b.weapon.current);
     return `<div class="bot"><h4><span class="p${i + 1}">P${i + 1}</span> ${esc(b.def.name)} <span class="hint">${esc(drivers[i].label)}</span></h4>
       <div class="row"><span>Speed</span><span>${b.forwardSpeed(d.xmat, d.qvel).toFixed(1)} m/s</span></div>${wpn}
-      <div class="row"><span>Battery</span><span>${b.vBus.toFixed(1)} V · ${amps.toFixed(0)} A</span></div>
+      <div class="row"><span>Battery</span><span>${b.D.splitBattery ? `${b.vBus.toFixed(1)} V weapon · ${b.vDriveBus.toFixed(1)} V drive` : `${b.vBus.toFixed(1)} V`} · ${amps.toFixed(0)} A</span></div>
       ${up ? '<div class="bad">UPSIDE DOWN (driving inverted)</div>' : side ? '<div class="bad">ON ITS SIDE</div>' : ''}</div>`;
   }).join('');
 }
@@ -283,28 +283,41 @@ addEventListener('drop', async (e) => {
   } else status(`Can't use ${files[0].name}: drop STEP / STL files (Workshop) or .bot robots (Arena)`);
 });
 
+// driving feel sliders: live, so they can be adjusted mid-match from the menu
+const feelInputs = [...document.querySelectorAll<HTMLInputElement>('#feel input[type=range]')];
+const showFeel = () => {
+  for (const el of feelInputs) el.value = String(Math.round(feel[+el.dataset.p! as 1 | 2][el.dataset.k as 'steer'] * 100));
+  $('feel-values').textContent = ([1, 2] as const).map((p) => `P${p}: steering ${Math.round(feel[p].steer * 100)}%, expo ${Math.round(feel[p].steerExpo * 100)}%, throttle expo ${Math.round(feel[p].thrExpo * 100)}%`).join(' · ');
+};
+for (const el of feelInputs) el.addEventListener('input', () => { feel[+el.dataset.p! as 1 | 2][el.dataset.k as 'steer'] = +el.value / 100; saveFeel(); showFeel(); });
+$('feel-reset').addEventListener('click', () => { resetFeel(1); resetFeel(2); saveFeel(); showFeel(); });
+showFeel();
+
 // ---------------------------------------------------------------- boot
 fillRobotLists(0, 1);
 requestAnimationFrame(frame);
-// mock-up robots made from CAD (tests/mockups.json): loaded quietly, they join the built-ins
-const mockups = Promise.all(MOCKUPS.map(async (f) => {
+// example robots made from CAD: they replace the code-built ones (kept only as an offline fallback)
+const examples = Promise.all(EXAMPLES.map(async (f) => {
   try {
     const res = await fetch('builtin/' + f);
     if (!res.ok || res.headers.get('content-type')?.includes('text/html')) return null;
     return await loadBot(await res.arrayBuffer());
-  } catch (e) { console.warn('mock-up robot', f, e); return null; }
+  } catch (e) { console.warn('example robot', f, e); return null; }
 })).then((defs) => {
   const ok = defs.filter((d): d is RobotDef => !!d);
+  if (!ok.length) return;
+  const names = (i: number) => robots[i]?.name;
+  const a = names(+$<HTMLSelectElement>('p1-robot').value), b = names(+$<HTMLSelectElement>('p2-robot').value);
+  // CAD versions take over the code-built robots of the same name; the rest of those stay as fallbacks
+  const keep = robots.filter((r) => !(builtIn.has(r) && ok.some((d) => d.name === r.name)));
+  robots.splice(0, robots.length, ...ok, ...keep.filter((r) => !builtIn.has(r)), ...keep.filter((r) => builtIn.has(r)));
   ok.forEach((d) => builtIn.add(d));
-  const at = BUILTINS.length;
-  robots.splice(at, 0, ...ok);
-  // keep each list on the robot it showed, now that indexes after the built-ins have shifted
-  const a = +$<HTMLSelectElement>('p1-robot').value, b = +$<HTMLSelectElement>('p2-robot').value;
-  fillRobotLists(a >= at ? a + ok.length : a, b >= at ? b + ok.length : b);
+  const at = (n: string | undefined, dflt: number) => { const i = robots.findIndex((r) => r.name === n); return i >= 0 ? i : dflt; };
+  fillRobotLists(at(a, 0), $<HTMLSelectElement>('p2-robot').value === '-1' ? -1 : at(b, 1));
 });
 
 getMujoco().then(async (m) => {
-  await mockups;
+  await examples;
   mj = m;
   status(hasWebGL ? 'Physics ready. Pick robots and press Start (or Enter).' : NO_GL);
   const linked = new URLSearchParams(location.search).get('bot');     // share links: ?bot=file.bot

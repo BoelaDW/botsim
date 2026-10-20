@@ -4,3 +4,5 @@ testfiles
 tests/.out
 public/occt/occt-import-js.*
 public/robots/index.json
+*.FCBak
+*.FCStd1

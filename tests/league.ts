@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { BUILTINS } from '../src/builtin';
 import { TIMESTEP } from '../src/build';
-import { MOCKUPS } from '../src/config';
+import { EXAMPLES } from '../src/config';
 import { AI } from '../src/input';
 import { loadBot } from '../src/robotfile';
 import { getMujoco, Sim, type Bot } from '../src/sim';
@@ -16,8 +16,10 @@ import type { RobotDef } from '../src/types';
 const mj = await getMujoco();
 const SECS = +(process.argv[2] ?? 40);
 const only = process.argv[3] ? new RegExp(process.argv[3], 'i') : null;
-const robots: RobotDef[] = [...BUILTINS];
-for (const f of MOCKUPS) { const b = readFileSync('public/builtin/' + f); robots.push(await loadBot(b.buffer.slice(b.byteOffset, b.byteOffset + b.length) as ArrayBuffer)); }
+// the arena's examples (the code-built BUILTINS only if the CAD ones haven't been built)
+const robots: RobotDef[] = [];
+for (const f of EXAMPLES) { const b = readFileSync('public/builtin/' + f); robots.push(await loadBot(b.buffer.slice(b.byteOffset, b.byteOffset + b.length) as ArrayBuffer)); }
+if (!robots.length) robots.push(...BUILTINS);
 
 interface Side { damage: number; hits: number; control: number; aggression: number; ko: boolean; stuck: number; wobble: number; closing: number; closingN: number }
 const side = (): Side => ({ damage: 0, hits: 0, control: 0, aggression: 0, ko: false, stuck: 0, wobble: 0, closing: 0, closingN: 0 });

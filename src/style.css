@@ -163,3 +163,6 @@ body.touch button, body.touch select { touch-action: manipulation; }
   body.touch #hud { flex-direction: column; align-items: flex-start; }
 }
 .no-gl { position: absolute; z-index: 20; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 32px)); font-size: 14px; color: var(--warn); }
+.feel-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 4px 8px; align-items: center; margin: 6px 0; font-size: 12px; }
+.feel-grid input[type=range] { width: 100%; padding: 0; }
+#feel button { margin-top: 4px; }

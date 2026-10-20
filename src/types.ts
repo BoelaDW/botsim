@@ -52,6 +52,7 @@ export interface MotorSpec {
 export interface Electrics {
   cells: number;             // LiPo S count
   volts?: number;            // battery voltage; default cells x 3.7
+  driveVolts?: number;       // separate drive battery (unset = the drive runs off the main battery)
   rBatt: number;             // ohm
   // ratio = gear / pulley reduction (motor turns per wheel or weapon turn). Older files give a
   // no-load speed instead (topSpeed m/s, tipSpeed m/s, armDps deg/s) and the ratio is worked out from it.

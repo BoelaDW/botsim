@@ -45,6 +45,20 @@
         <label class="touch-only">Touch controls
           <select id="touch-mode"><option value="two">two sticks (left drive, right steer)</option><option value="one">one stick (drive + steer)</option></select>
         </label>
+        <details id="feel">
+          <summary>Driving feel</summary>
+          <div class="feel-grid">
+            <span></span><b>P1</b><b>P2</b>
+            <span title="how hard full stick turns the robot">Steering</span>
+            <input type="range" min="20" max="100" data-p="1" data-k="steer" /><input type="range" min="20" max="100" data-p="2" data-k="steer" />
+            <span title="softer around the centre for fine aiming, full stick still turns fully">Steering expo</span>
+            <input type="range" min="0" max="100" data-p="1" data-k="steerExpo" /><input type="range" min="0" max="100" data-p="2" data-k="steerExpo" />
+            <span title="softer throttle around the centre">Throttle expo</span>
+            <input type="range" min="0" max="100" data-p="1" data-k="thrExpo" /><input type="range" min="0" max="100" data-p="2" data-k="thrExpo" />
+          </div>
+          <div id="feel-values" class="hint"></div>
+          <button id="feel-reset">Reset to defaults</button>
+        </details>
         <button id="start" class="primary">Start match (Enter)</button>
         <label class="file">Load a .bot file <input id="bot-file" type="file" accept=".bot,.json" multiple /></label>
         <details>
@@ -181,7 +195,10 @@
         <div class="grid3">
           <label>Battery cells (S) <input id="ws-cells" type="number" value="6" min="1" max="12" /></label>
           <label>Voltage (V) <input id="ws-volts" type="number" value="22.2" step="0.1" title="nominal is 3.7 V per cell, fully charged 4.2" /></label>
-          <span></span>
+          <label class="check"><input id="ws-split" type="checkbox" /> separate drive battery</label>
+          <label class="drive-batt">Drive cells (S) <input id="ws-dcells" type="number" value="4" min="1" max="12" /></label>
+          <label class="drive-batt">Drive voltage (V) <input id="ws-dvolts" type="number" value="14.8" step="0.1" /></label>
+          <span class="drive-batt"></span>
           <label>Weapon kV <input id="ws-wkv" type="number" /></label>
           <label>Weapon R (Ω) <input id="ws-wr" type="number" step="0.001" title="winding resistance (motor spec sheet)" /></label>
           <label>Weapon ESC limit (A) <input id="ws-wi" type="number" /></label>

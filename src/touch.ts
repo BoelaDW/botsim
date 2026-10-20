@@ -47,8 +47,8 @@ export function setupTouch(arena: HTMLElement, hooks: TouchHooks) {
       dx *= k; dy *= k;
       knob.style.transform = `translate(${dx}px, ${dy}px)`;
       const x = dx / RADIUS, y = -dy / RADIUS;
-      if (side === 'l') { touch.thr = dz(y); if (touch.oneStick) touch.steer = dz(x) * 0.8; }
-      else if (!touch.oneStick) touch.steer = dz(x) * 0.8;
+      if (side === 'l') { touch.thr = dz(y); if (touch.oneStick) touch.steer = dz(x); }
+      else if (!touch.oneStick) touch.steer = dz(x);
     };
     stick.addEventListener('pointerdown', (e) => {
       if (id >= 0) return;

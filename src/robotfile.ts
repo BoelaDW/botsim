@@ -155,6 +155,7 @@ export function validateDef(def: RobotDef) {
   if (!E || !E.drive || !E.weapon) fail('has no motor settings');
   num(E.cells, 'battery cells', 1, 50);
   if (E.volts !== undefined) num(E.volts, 'battery voltage', 0.5, 200);
+  if (E.driveVolts !== undefined) num(E.driveVolts, 'drive battery voltage', 0.5, 200);
   num(E.rBatt, 'battery resistance', 0, 10);
   for (const [k, m] of [['drive', E.drive], ['weapon', E.weapon]] as const) {
     num(m.kv, `${k} motor kV`, 1, 1e6);

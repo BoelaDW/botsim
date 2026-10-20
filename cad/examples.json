@@ -1,0 +1,1321 @@
+[
+ {
+  "name": "Wide vert",
+  "saveAs": "wide-vert.bot",
+  "file": "cad/examples/wide_vert.step",
+  "weapon": "spinner",
+  "tags": [
+   [
+    "^(Disc|Weapon axle)",
+    "weapon"
+   ],
+   [
+    "^Wheel rear L",
+    "wheel1"
+   ],
+   [
+    "^Wheel front L",
+    "wheel2"
+   ],
+   [
+    "^Wheel rear R",
+    "wheel3"
+   ],
+   [
+    "^Wheel front R",
+    "wheel4"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^(Pod|Top plate|Weapon upright|Plough)",
+    [
+     0.93,
+     0.25,
+     0.6
+    ]
+   ],
+   [
+    "^(Base plate|Electronics)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ],
+   [
+    "^(Disc|Weapon axle)",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 600,
+    "r": 0.025,
+    "iLimit": 130,
+    "ratio": 2.25
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 23
+   }
+  },
+  "description": "Wide vertical disc spinner on pods of two wheels, with a plough in front.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ],
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ]
+  ]
+ },
+ {
+  "name": "Drum",
+  "saveAs": "drum.bot",
+  "file": "cad/examples/drum.step",
+  "weapon": "drum",
+  "tags": [
+   [
+    "^Drum",
+    "weapon"
+   ],
+   [
+    "^Wheel rear L",
+    "wheel1"
+   ],
+   [
+    "^Wheel front L",
+    "wheel2"
+   ],
+   [
+    "^Wheel rear R",
+    "wheel3"
+   ],
+   [
+    "^Wheel front R",
+    "wheel4"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^(Top plate|Side rail)",
+    [
+     0.2,
+     0.45,
+     0.9
+    ]
+   ],
+   [
+    "^(Base plate|Electronics|Rear wall)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ],
+   [
+    "^Drum",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 1000,
+    "r": 0.02,
+    "iLimit": 50,
+    "ratio": 3.2
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 41
+   }
+  },
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ],
+   [
+    "^Drum",
+    "Steel"
+   ]
+  ],
+  "description": "Full-width drum between big wheels: works either way up.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ]
+ },
+ {
+  "name": "Lifter",
+  "saveAs": "lifter.bot",
+  "file": "cad/examples/lifter.step",
+  "weapon": "lifter",
+  "tags": [
+   [
+    "^(Arm |Lid|Fork)",
+    "weapon"
+   ],
+   [
+    "^Wheel rear L",
+    "wheel1"
+   ],
+   [
+    "^Wheel front L",
+    "wheel2"
+   ],
+   [
+    "^Wheel rear R",
+    "wheel3"
+   ],
+   [
+    "^Wheel front R",
+    "wheel4"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^(Side rail|Arm |Lid)",
+    [
+     0.95,
+     0.55,
+     0.12
+    ]
+   ],
+   [
+    "^(Base plate|Electronics)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ],
+   [
+    "^Fork",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 80,
+    "ratio": 333
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 28
+   }
+  },
+  "pivot": "^Lifter pivot",
+  "range": [
+   0,
+   150
+  ],
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ],
+   [
+    "^Forks",
+    "Steel"
+   ]
+  ],
+  "description": "Lifting lid with steel forks: gets under them and carries them to the wall. Self-rights with the lid.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ]
+ },
+ {
+  "name": "Hammer",
+  "saveAs": "hammer.bot",
+  "file": "cad/examples/hammer.step",
+  "weapon": "hammer",
+  "tags": [
+   [
+    "^Hammer (arm|head)",
+    "weapon"
+   ],
+   [
+    "^Wheel rear L",
+    "wheel1"
+   ],
+   [
+    "^Wheel front L",
+    "wheel2"
+   ],
+   [
+    "^Wheel rear R",
+    "wheel3"
+   ],
+   [
+    "^Wheel front R",
+    "wheel4"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^(Side rail|Front wedge)",
+    [
+     0.3,
+     0.75,
+     0.3
+    ]
+   ],
+   [
+    "^(Base plate|Electronics|Pivot towers)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ],
+   [
+    "^Hammer",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 500,
+    "r": 0.03,
+    "iLimit": 90,
+    "ratio": 60
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 28
+   }
+  },
+  "weaponAxis": "x",
+  "reverse": true,
+  "pivot": "^Hammer pivot",
+  "range": [
+   0,
+   200
+  ],
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ],
+   [
+    "^Hammer (arm|head)",
+    "Steel"
+   ]
+  ],
+  "description": "Overhead hammer: the head swings from the back over the top into the floor in front.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ]
+ },
+ {
+  "name": "Shell Shock",
+  "saveAs": "shell-shock.bot",
+  "file": "cad/examples/shell_shock.step",
+  "weapon": "spinner",
+  "tags": [
+   [
+    "^Shell",
+    "weapon"
+   ],
+   [
+    "^Wheel rear L",
+    "wheel1"
+   ],
+   [
+    "^Wheel front L",
+    "wheel2"
+   ],
+   [
+    "^Wheel rear R",
+    "wheel3"
+   ],
+   [
+    "^Wheel front R",
+    "wheel4"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^Shell",
+    [
+     0.75,
+     0.77,
+     0.8
+    ]
+   ],
+   [
+    "^(Chassis|Battery|Electronics|Bearing|Skid)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 1000,
+    "r": 0.012,
+    "iLimit": 150,
+    "ratio": 4
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 25
+   }
+  },
+  "description": "Full-body shell spinner on four wheels tucked inside. Slow to spin up, brutal when it's there. Works upside down.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ],
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ]
+  ]
+ },
+ {
+  "name": "Eggbeater",
+  "saveAs": "eggbeater.bot",
+  "file": "cad/examples/eggbeater.step",
+  "weapon": "drum",
+  "tags": [
+   [
+    "^Beater",
+    "weapon"
+   ],
+   [
+    "^Drive wheel L",
+    "wheel1"
+   ],
+   [
+    "^Drive wheel R",
+    "wheel2"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^(Lid|Side|Fork)",
+    [
+     0.55,
+     0.2,
+     0.75
+    ]
+   ],
+   [
+    "^(Base|Battery|Caster|Weapon motor)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ],
+   [
+    "^Beater",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 1000,
+    "r": 0.015,
+    "iLimit": 80,
+    "ratio": 2.2
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 25
+   }
+  },
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ],
+   [
+    "^Beater",
+    "Steel"
+   ]
+  ],
+  "description": "Two-hoop steel eggbeater on forks, two-wheel drive.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ]
+ },
+ {
+  "name": "Six Pack",
+  "saveAs": "six-pack.bot",
+  "file": "cad/examples/six_pack.step",
+  "weapon": "lifter",
+  "tags": [
+   [
+    "^Flipper (plate|arm)",
+    "weapon"
+   ],
+   [
+    "^Wheel front L",
+    "wheel1"
+   ],
+   [
+    "^Wheel middle L",
+    "wheel2"
+   ],
+   [
+    "^Wheel rear L",
+    "wheel3"
+   ],
+   [
+    "^Wheel front R",
+    "wheel4"
+   ],
+   [
+    "^Wheel middle R",
+    "wheel5"
+   ],
+   [
+    "^Wheel rear R",
+    "wheel6"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^(Lid|Side)",
+    [
+     0.95,
+     0.8,
+     0.15
+    ]
+   ],
+   [
+    "^(Base|Battery|Gearmotor)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ],
+   [
+    "^Flipper",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 60,
+    "ratio": 250
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 25
+   }
+  },
+  "pivot": "^Flipper hinge",
+  "range": [
+   0,
+   80
+  ],
+  "description": "Six-wheel drop-centre pusher with a full-width front lifter. Works upside down.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ],
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ]
+  ]
+ },
+ {
+  "name": "Sidewinder",
+  "saveAs": "sidewinder.bot",
+  "file": "cad/examples/sidewinder.step",
+  "weapon": "hammer",
+  "tags": [
+   [
+    "^Hammer (arm|head)",
+    "weapon"
+   ],
+   [
+    "^Wheel L1",
+    "wheel1"
+   ],
+   [
+    "^Wheel L2",
+    "wheel2"
+   ],
+   [
+    "^Wheel R1",
+    "wheel3"
+   ],
+   [
+    "^Wheel R2",
+    "wheel4"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^(Lid|Side|Front scoop)",
+    [
+     0.2,
+     0.7,
+     0.7
+    ]
+   ],
+   [
+    "^(Base|Battery|Hinge)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ],
+   [
+    "^Hammer",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 500,
+    "r": 0.03,
+    "iLimit": 90,
+    "ratio": 60
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 25
+   }
+  },
+  "weaponAxis": "y",
+  "reverse": true,
+  "pivot": "^Hammer hinge",
+  "range": [
+   0,
+   180
+  ],
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ],
+   [
+    "^Hammer (arm|head)",
+    "Steel"
+   ]
+  ],
+  "description": "Hammer that lies out to the right and swings over the top to the left. Drive alongside.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ]
+ },
+ {
+  "name": "Tilt",
+  "saveAs": "tilt.bot",
+  "file": "cad/examples/tilt.step",
+  "weapon": "spinner",
+  "tags": [
+   [
+    "^Disc",
+    "weapon"
+   ],
+   [
+    "^Wheel rear L",
+    "wheel1"
+   ],
+   [
+    "^Wheel front L",
+    "wheel2"
+   ],
+   [
+    "^Wheel rear R",
+    "wheel3"
+   ],
+   [
+    "^Wheel front R",
+    "wheel4"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^(Lid|Weapon upright)",
+    [
+     0.9,
+     0.35,
+     0.1
+    ]
+   ],
+   [
+    "^(Base|Electronics|Skid)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ],
+   [
+    "^Disc",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ],
+   [
+    "^Fork",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 500,
+    "r": 0.015,
+    "iLimit": 150,
+    "ratio": 2
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 25
+   }
+  },
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ],
+   [
+    "^Disc",
+    "Steel"
+   ],
+   [
+    "^Fork",
+    "Steel"
+   ]
+  ],
+  "description": "Vertical disc on four cambered wheels.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ]
+ },
+ {
+  "name": "Frog-ish Block",
+  "saveAs": "frog-ish-block.bot",
+  "file": "cad/examples/frog_block.step",
+  "weapon": "spinner",
+  "tags": [
+   [
+    "^(Spinner bar|Weapon shaft)",
+    "weapon"
+   ],
+   [
+    "^Rear wheel L",
+    "wheel1"
+   ],
+   [
+    "^Front wheel L",
+    "wheel2"
+   ],
+   [
+    "^Rear wheel R",
+    "wheel3"
+   ],
+   [
+    "^Front wheel R",
+    "wheel4"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^(Top plate|Side rail|Front armour)",
+    [
+     0.3,
+     0.7,
+     0.25
+    ]
+   ],
+   [
+    "^Rear armour",
+    [
+     0.1,
+     0.3,
+     0.1
+    ]
+   ],
+   [
+    "^(Base plate|Bearing|Battery|Frog Brain|.*motor)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ],
+   [
+    "^(Spinner bar|Weapon shaft)",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ],
+   [
+    "^Fork",
+    [
+     0.92,
+     0.92,
+     0.9
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 1550,
+    "r": 0.009,
+    "iLimit": 135,
+    "ratio": 3.64
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 30
+   }
+  },
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ],
+   [
+    "^Spinner bar",
+    "Steel"
+   ]
+  ],
+  "description": "A blocky FROG V3: 315 mm bar spinning under the front, Rocket 4092 weapon motor, hinged UHMW forks.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ]
+ },
+ {
+  "name": "Thorn",
+  "saveAs": "thorn.bot",
+  "file": "cad/examples/thorn.step",
+  "weapon": "drum",
+  "tags": [
+   [
+    "^Drum",
+    "weapon"
+   ],
+   [
+    "^Wheel rear L",
+    "wheel1"
+   ],
+   [
+    "^Wheel front L",
+    "wheel2"
+   ],
+   [
+    "^Wheel rear R",
+    "wheel3"
+   ],
+   [
+    "^Wheel front R",
+    "wheel4"
+   ]
+  ],
+  "color": [
+   [
+    "^Wheel|wheel",
+    [
+     0.08,
+     0.08,
+     0.08
+    ]
+   ],
+   [
+    "^(Body|Top plate)",
+    [
+     0.55,
+     0.05,
+     0.12
+    ]
+   ],
+   [
+    "^(Base plate|Axle plate|Battery|ESCs|Drive motor|Weapon motor)",
+    [
+     0.12,
+     0.12,
+     0.13
+    ]
+   ],
+   [
+    "^Drum",
+    [
+     0.72,
+     0.74,
+     0.78
+    ]
+   ]
+  ],
+  "elec": {
+   "weapon": {
+    "kv": 1500,
+    "r": 0.02,
+    "iLimit": 100,
+    "ratio": 3.35
+   },
+   "drive": {
+    "kv": 1000,
+    "r": 0.05,
+    "iLimit": 40,
+    "ratio": 29
+   }
+  },
+  "material": [
+   [
+    "[Ww]heel",
+    "TPU / urethane"
+   ],
+   [
+    "^Drum",
+    "Steel"
+   ]
+  ],
+  "description": "Drum on the front axle between the front wheels, rear track narrower. 4WD.",
+  "fill": [
+   [
+    "[Ww]heel",
+    0.4
+   ],
+   [
+    "^(Electronics|Gearmotor|ESCs)",
+    0.25
+   ],
+   [
+    "^Battery",
+    0.7
+   ],
+   [
+    "^Pod ",
+    0.25
+   ],
+   [
+    "^Body",
+    0.3
+   ],
+   [
+    "armour TPU",
+    0.5
+   ],
+   [
+    "^(Drive motor|Weapon motor)",
+    0.6
+   ]
+  ]
+ }
+]

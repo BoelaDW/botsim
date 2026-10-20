@@ -8,13 +8,18 @@ A combat robot simulator that runs in the browser: **MuJoCo** physics (the offic
 Three pages:
 
 - **Arena** — 1v1 featherweight fights, test drives, AI opponent, gamepads, keyboard or touch (phones / tablets).
+  **Driving feel** in the menu: steering sensitivity and expo for each player.
 - **Gallery** — robots other builders have shared: fight them, or copy a link that opens the arena with one loaded.
 - **Workshop** — load a STEP / IGES / STL, orient it, tag parts (chassis / weapon / wheel 1–6 / ignore),
   set materials, motors and battery, then test it in the arena or save a `.bot` file to share.
 
-Built-in robots (boxes and cylinders, guessed specs): Wide vert (spinner), Drum, Lifter, Hammer. Plus five mock-ups
-made from CAD through the Workshop pipeline (`tests/mockups.json`, rebuilt with `npm run mockups`): Shell Shock
-(shell spinner), Eggbeater, Six Pack (6WD lifter), Sidewinder (side-swinging hammer) and Tilt (vertical disc).
+Example robots (eleven): Wide vert, Drum, Lifter, Hammer, Shell Shock, Eggbeater, Six Pack, Sidewinder, Tilt,
+Frog-ish Block (a blocky FROG V3) and Thorn (a front-axle drum). Each one is a **parametric FreeCAD model** in
+`cad/examples/*.FCStd`: open it, change the values in its **Params** VarSet (wheel sizes, weapon size and height, body
+size...), recompute, save, then run `npm run examples` to export STEP and rebuild the arena robots
+(`FULL=1 npm run examples` also test-drives and fights them). Tags, materials and motors per robot are in
+`cad/examples.json`. `cad/make_examples.py` regenerates the models from scratch (it won't overwrite your edits
+without `FORCE=1`).
 
 ## Run it
 
@@ -48,7 +53,7 @@ First pad = P1, second pad = P2. Browsers only report a pad after one of its but
    on the same Wheel tag. Weapon parts go on **Weapon**. Fasteners etc. can stay chassis (mass only).
 4. Weapon: pick the type. Spinner/drum axes are auto-detected; for lifters and hammers select the hinge parts and press
    **Pivot = selection**. Use **reverse direction** if it spins/lifts the wrong way.
-5. Motors & battery: cells / voltage, then for weapon and drive the kV, winding resistance, ESC current limit and the
+5. Motors & battery: cells / voltage (tick **separate drive battery** if the drive has its own pack), then for weapon and drive the kV, winding resistance, ESC current limit and the
    **reduction** (motor turns per output turn: `3`, `36/12`, `3:1`, or stages multiplied like `5.2*36/16`).
    The lines underneath show motor rpm → output rpm, and after **Check** the tip speed, energy and drive speed.
 6. **Check** shows detected wheels (blue) and the weapon axis (yellow) on the model, plus mass and energy.
